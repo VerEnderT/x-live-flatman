@@ -6,7 +6,7 @@ import requests
 import subprocess
 import re
 from bs4 import BeautifulSoup
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QTextEdit, QScrollArea, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import Qt, QProcess
 
@@ -40,8 +40,8 @@ class FlatpakApp(QWidget):
         self.categoryLabel.setFixedWidth(lwidth)
         self.leftLayout.addWidget(self.categoryLabel)
 
-        self.categoryList = QListWidget()
-        self.categoryList.setFixedSize(lwidth, catheight)
+        self.categoryList = QComboBox()
+        self.categoryList.setFixedWidth(lwidth)
         self.leftLayout.addWidget(self.categoryList)
 
         self.programLabel = QLabel("Programme:")
@@ -52,6 +52,9 @@ class FlatpakApp(QWidget):
         self.programList.currentItemChanged.connect(self.onProgramClicked)
         self.programList.setFixedWidth(lwidth)
         self.leftLayout.addWidget(self.programList)
+        self.programList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.programList.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
 
         self.loadButton = QPushButton("Daten aktualisieren")
         self.loadButton.setFixedWidth(lwidth)
@@ -87,18 +90,6 @@ class FlatpakApp(QWidget):
         self.uninstallButton.clicked.connect(self.uninstall_start)
         self.uninstallButton.setStyleSheet(""" QPushButton {background: red;color: black;} QPushButton:disabled {background: gray;color: light_gray;}""")
 
-
-        self.descriptionLabel = QLabel("Beschreibung:")
-        self.rightLayout.addWidget(self.descriptionLabel)
-
-        self.descriptionText = QTextEdit()
-        self.descriptionText.setReadOnly(True)
-        self.descriptionText.setFixedHeight(desheight)
-        self.rightLayout.addWidget(self.descriptionText)
-
-        self.screenshotLabel = QLabel("Screenshots:")
-        self.rightLayout.addWidget(self.screenshotLabel)
-
         self.screenshotArea = QScrollArea()
         self.screenshotContainer = QWidget()
         self.screenshotArea.setFixedHeight(sshotheight)
@@ -108,7 +99,20 @@ class FlatpakApp(QWidget):
         self.screenshotArea.setWidgetResizable(True)
         self.rightLayout.addWidget(self.screenshotArea)
         self.screenshotlabel = QLabel()
+        self.screenshotLayout.addStretch(0)
         self.screenshotLayout.addWidget(self.screenshotlabel)
+        self.screenshotLayout.addStretch(0)
+
+        self.descriptionLabel = QLabel("Beschreibung:")
+        self.rightLayout.addWidget(self.descriptionLabel)
+
+        self.descriptionText = QTextEdit()
+        self.descriptionText.setReadOnly(True)
+        self.descriptionText.setFixedHeight(desheight)
+        self.rightLayout.addWidget(self.descriptionText)
+
+        #self.screenshotLabel = QLabel("Screenshots:")
+        #self.rightLayout.addWidget(self.screenshotLabel)
 
 
         layout.addLayout(self.leftLayout)
@@ -124,8 +128,8 @@ class FlatpakApp(QWidget):
         if os.path.exists(self.data_file):
             with open(self.data_file, "r") as f:
                 self.program_data = json.load(f)
-            print("lädt daten")
-            print(f"data: {self.categories_ordered}")
+            #print("lädt daten")
+            #print(f"data: {self.categories_ordered}")
             self.displayCategories()
         else:
             self.loadCategories()
@@ -166,7 +170,7 @@ class FlatpakApp(QWidget):
             page_number = 1
             while True:
                 url = f"{base_url}{page_number}"
-                print(f"[DEBUG] Sende Anfrage an: {url}")
+                #print(f"[DEBUG] Sende Anfrage an: {url}")
                 try:
                     response = requests.get(url)
                     response.raise_for_status()
@@ -192,7 +196,7 @@ class FlatpakApp(QWidget):
                     page_number += 1
 
                 except Exception as e:
-                    print(f"[ERROR] Fehler beim Verarbeiten der Seite: {e}")
+                    #print(f"[ERROR] Fehler beim Verarbeiten der Seite: {e}")
                     break
         
         command = ['pkill', '-f', 'python3 /usr/share/x-live/flatman/warten.py']        
@@ -206,22 +210,23 @@ class FlatpakApp(QWidget):
         output_dir = os.path.dirname(self.data_file)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-            print(f"[DEBUG] Verzeichnis erstellt: {output_dir}")
+            #print(f"[DEBUG] Verzeichnis erstellt: {output_dir}")
 
         with open(self.data_file, "w") as f:
             json.dump(self.program_data, f)
-        print(f"[DEBUG] Daten gespeichert in: {self.data_file}")
+        #print(f"[DEBUG] Daten gespeichert in: {self.data_file}")
 
     def displayCategories(self):
         self.show()
         self.categoryList.clear()
         for category in self.categories_ordered:
             self.categoryList.addItem(category)
-        self.categoryList.currentItemChanged.connect(self.loadPrograms)        
-        self.categoryList.setCurrentRow(0)
+        self.categoryList.currentIndexChanged.connect(self.loadPrograms)        
+        self.categoryList.setCurrentIndex(0)
+        self.loadPrograms()
 
-    def loadPrograms(self, item):
-        category = item.text()
+    def loadPrograms(self):
+        category = self.categoryList.currentText()
         self.programList.clear()
         # Programme alphabetisch sortieren, bevor sie hinzugefügt werden
         sorted_programs = sorted([app_name for app_name, data in self.program_data.items() if data["category"] == category])
@@ -230,12 +235,16 @@ class FlatpakApp(QWidget):
         self.programList.setCurrentRow(0)
 
     def onProgramClicked(self, item):
-        app_name = item.text()
-        print(item.text)
-        app_url = self.program_data.get(app_name, {}).get("url")
-        self.last_item = item
-        if app_url:
-            self.displayProgramDetails(app_url, app_name)
+        try:
+            app_name = item.text()
+            #print(item.text)
+            app_url = self.program_data.get(app_name, {}).get("url")
+            self.last_item = item
+            if app_url:
+                self.displayProgramDetails(app_url, app_name)
+
+        except Exception as e:
+            pass
 
     def get_data_from_appstream(self, app_id):
         try:
@@ -243,7 +252,7 @@ class FlatpakApp(QWidget):
             result = subprocess.run(cmd, capture_output=True, text=True)
 
             if result.returncode != 0:
-                print(f"[ERROR] Fehler beim Abrufen von AppStream-Daten: {result.stderr}")
+                #print(f"[ERROR] Fehler beim Abrufen von AppStream-Daten: {result.stderr}")
                 return []
 
             lines = result.stdout.strip().lstrip().replace("\t", "").splitlines()
@@ -265,17 +274,17 @@ class FlatpakApp(QWidget):
             return screenshots, thumbnails, description
 
         except Exception as e:
-            print(f"[ERROR] Fehler beim Verarbeiten von AppStream-Daten: {e}")
+            #print(f"[ERROR] Fehler beim Verarbeiten von AppStream-Daten: {e}")
             return []
 
     def displayProgramDetails(self, app_url, app_name):
-        print(f"[DEBUG] Lade Details für Programm: {app_url}")
+        #print(f"[DEBUG] Lade Details für Programm: {app_url}")
         self.app_id = app_url.split('/')[-1]
         try:
             app_id = app_url.split('/')[-1]
             screenshots, thumbnails, description = self.get_data_from_appstream(app_id)
             if thumbnails:
-                screenshot_url = thumbnails[-1]
+                screenshot_url = thumbnails[0]
             else:
                 if screenshots:
                     screenshot_url = screenshots[0]
@@ -285,9 +294,15 @@ class FlatpakApp(QWidget):
                 pixmap = QPixmap()
                 pixmap.loadFromData(response.content)
                 self.screenshotlabel.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            else:
+                pixmap = QPixmap("/usr/share/x-live/flatman/no_screenshot.png")
+                self.screenshotlabel.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
 
         except Exception as e:
-            print(f"[ERROR] Fehler beim Abrufen des Thumbnails: {e}")
+            #print(f"[ERROR] Fehler beim Abrufen des Thumbnails: {e}")
+            pixmap = QPixmap("/usr/share/x-live/flatman/no_screenshot.png")
+            self.screenshotlabel.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
         try:
             cmd = "flatpak list --app".split(" ")
@@ -327,7 +342,7 @@ class FlatpakApp(QWidget):
             #    self.screenshotLayout.addWidget(label)
 
         except Exception as e:
-            print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
+            #print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
             try:
                 response = requests.get(app_url)
                 response.raise_for_status()
@@ -342,8 +357,8 @@ class FlatpakApp(QWidget):
 
             
             except Exception as e:
-                print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
-            
+                #print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
+                pass
 
     def clearLayout(self, layout):
         if layout is not None:
@@ -362,9 +377,11 @@ class FlatpakApp(QWidget):
             if theme_name:
                 return theme_name
         except FileNotFoundError:
-            print("xfconf-query nicht gefunden. Versuche gsettings.")
+            pass
+            #print("xfconf-query nicht gefunden. Versuche gsettings.")
         except Exception as e:
-            print(f"Error getting theme with xfconf-query: {e}")
+            #print(f"Error getting theme with xfconf-query: {e}")
+            pass
 
         try:
             # Fallback auf gsettings, falls xfconf-query nicht vorhanden ist
@@ -373,7 +390,8 @@ class FlatpakApp(QWidget):
             if theme_name:
                 return theme_name
         except Exception as e:
-            print(f"Error getting theme with gsettings: {e}")
+            #print(f"Error getting theme with gsettings: {e}")
+            pass
 
         return None
 
@@ -389,14 +407,14 @@ class FlatpakApp(QWidget):
                     return match.group(1)
                 return None
         except IOError as e:
-            print(f"Error reading file: {e}")
+            #print(f"Error reading file: {e}")
             return None
             
             
     def background_color(self):
         theme_name = self.get_current_theme()
         if theme_name:
-            print(f"Current theme: {theme_name}")
+            #print(f"Current theme: {theme_name}")
 
             # Pfad zur GTK-CSS-Datei des aktuellen Themes
             css_file_path = f'/usr/share/themes/{theme_name}/gtk-3.0/gtk.css'
@@ -405,10 +423,11 @@ class FlatpakApp(QWidget):
                 color = self.extract_color_from_css(css_file_path, ' color')
                 self.setStyleSheet(f"background: {bcolor};color: {color}")
             else:
-                print(f"CSS file not found: {css_file_path}")
+                pass                
+                #print(f"CSS file not found: {css_file_path}")
         else:
-            print("Unable to determine the current theme.")
-            
+            #print("Unable to determine the current theme.")
+            pass
     
     def app_start(self):
         cmd = (f"flatpak run {self.app_id}").split(" ")

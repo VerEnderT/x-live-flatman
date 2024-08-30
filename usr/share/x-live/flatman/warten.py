@@ -122,10 +122,14 @@ class MyWidget(QWidget):
                 #self.setStyleSheet(f"background: {bcolor};color: {color}")
             else:
                 print(f"CSS file not found: {css_file_path}")
+                self.color_background="gray"
+                self.color_font = "white"
         else:
             print("Unable to determine the current theme.")
-            
-    
+            self.color_background="gray"
+            self.color_font = "white"
+        
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
