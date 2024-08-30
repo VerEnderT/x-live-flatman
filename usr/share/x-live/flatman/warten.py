@@ -60,12 +60,13 @@ class MyWidget(QWidget):
         self.setGeometry(pos_x, pos_y,breite,hoehe)
         self.setWindowIcon(QIcon.fromTheme('settings'))  # Setze das systemweite Theme-Icon als Fenstericon
         self.setWindowTitle("X-Mint Einstellungstool")
-        self.setMinimumSize(breite, hoehe)  # Festlegen der Größe auf 600x400 Pixel
-        self.setFixedWidth(breite)
+        #self.setMinimumSize(breite, hoehe)  # Festlegen der Größe auf 600x400 Pixel
+        #self.setFixedWidth(breite)
         self.setStyleSheet("background: rgba(80,80, 80, 00);")  # Hintergrundfarbe festlegen
 
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)  # Entfernt die Fensterdekoration
+        self.adjustSze()
         self.show()
 
     def get_current_theme(self):
