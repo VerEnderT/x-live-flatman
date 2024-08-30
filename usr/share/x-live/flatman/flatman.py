@@ -49,7 +49,7 @@ class FlatpakApp(QWidget):
         self.leftLayout.addWidget(self.programLabel)
 
         self.programList = QListWidget()
-        self.programList.itemClicked.connect(self.onProgramClicked)
+        self.programList.currentItemChanged.connect(self.onProgramClicked)
         self.programList.setFixedWidth(lwidth)
         self.leftLayout.addWidget(self.programList)
 
@@ -107,13 +107,16 @@ class FlatpakApp(QWidget):
         self.screenshotArea.setWidget(self.screenshotContainer)
         self.screenshotArea.setWidgetResizable(True)
         self.rightLayout.addWidget(self.screenshotArea)
+        self.screenshotlabel = QLabel()
+        self.screenshotLayout.addWidget(self.screenshotlabel)
+
 
         layout.addLayout(self.leftLayout)
         layout.addLayout(self.rightLayout)
 
         self.setLayout(layout)
         self.background_color()
-        self.show()
+        #self.show()
 
         self.loadSavedData()
 
@@ -128,7 +131,18 @@ class FlatpakApp(QWidget):
             self.loadCategories()
 
     def loadCategories(self):
+        self.hide()
         os.system("appstreamcli refresh-cache")
+        cmd = ["python3", "/usr/share/x-live/flatman/warten.py"]  # Beispielprogramm; passe dies an das Programm an, das du starten möchtest
+    
+        # Starten des Prozesses ohne Einfluss auf das Hauptprogramm
+        process = subprocess.Popen(
+            cmd,
+            start_new_session=True,  # Startet den Prozess in einer neuen Sitzung
+            stdout=subprocess.DEVNULL,  # Verhindert Ausgabe des gestarteten Prozesses in der Konsole
+            stderr=subprocess.DEVNULL,  # Verhindert Fehlerausgabe in der Konsole
+        )
+
         base_urls = [
             "https://flathub.org/de/apps/collection/trending/",
             "https://flathub.org/de/apps/category/Game/",
@@ -180,7 +194,11 @@ class FlatpakApp(QWidget):
                 except Exception as e:
                     print(f"[ERROR] Fehler beim Verarbeiten der Seite: {e}")
                     break
-
+        
+        command = ['pkill', '-f', 'python3 /usr/share/x-live/flatman/warten.py']        
+        result = subprocess.run(command, text=True)
+        
+        self.show()
         self.saveData()
         self.displayCategories()
 
@@ -195,10 +213,12 @@ class FlatpakApp(QWidget):
         print(f"[DEBUG] Daten gespeichert in: {self.data_file}")
 
     def displayCategories(self):
+        self.show()
         self.categoryList.clear()
         for category in self.categories_ordered:
             self.categoryList.addItem(category)
-        self.categoryList.itemClicked.connect(self.loadPrograms)
+        self.categoryList.currentItemChanged.connect(self.loadPrograms)        
+        self.categoryList.setCurrentRow(0)
 
     def loadPrograms(self, item):
         category = item.text()
@@ -206,10 +226,12 @@ class FlatpakApp(QWidget):
         # Programme alphabetisch sortieren, bevor sie hinzugefügt werden
         sorted_programs = sorted([app_name for app_name, data in self.program_data.items() if data["category"] == category])
         for app_name in sorted_programs:
-            self.programList.addItem(app_name)
+            self.programList.addItem(app_name)        
+        self.programList.setCurrentRow(0)
 
     def onProgramClicked(self, item):
         app_name = item.text()
+        print(item.text)
         app_url = self.program_data.get(app_name, {}).get("url")
         self.last_item = item
         if app_url:
@@ -227,15 +249,20 @@ class FlatpakApp(QWidget):
             lines = result.stdout.strip().lstrip().replace("\t", "").splitlines()
             screenshots = []
             description = ""
+            thumbnails = []
             for line in lines:
                 testline = line[line.find("<"):]
                 if testline.startswith('<image type="source"'):
                     url = testline[testline.find(">")+1:]
                     url = url[:url.find("<")]
                     screenshots.append(url)
+                if testline.startswith('<image type="thumbnail"'):
+                    url = testline[testline.find(">")+1:]
+                    url = url[:url.find("<")]
+                    thumbnails.append(url)
                 if testline.startswith('<p>'):
                     description = (description+testline[testline.find("<p>"):]).replace("</p>", "").replace("<p>", "")
-            return screenshots, description
+            return screenshots, thumbnails, description
 
         except Exception as e:
             print(f"[ERROR] Fehler beim Verarbeiten von AppStream-Daten: {e}")
@@ -246,10 +273,23 @@ class FlatpakApp(QWidget):
         self.app_id = app_url.split('/')[-1]
         try:
             app_id = app_url.split('/')[-1]
-            screenshots, description = self.get_data_from_appstream(app_id)
-            #print(f"screenshots: {screenshots}")
-            #print(f"description: {description}")
+            screenshots, thumbnails, description = self.get_data_from_appstream(app_id)
+            if thumbnails:
+                screenshot_url = thumbnails[-1]
+            else:
+                if screenshots:
+                    screenshot_url = screenshots[0]
+            if screenshot_url:
+                response = requests.get(screenshot_url)
+                response.raise_for_status()
+                pixmap = QPixmap()
+                pixmap.loadFromData(response.content)
+                self.screenshotlabel.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
+        except Exception as e:
+            print(f"[ERROR] Fehler beim Abrufen des Thumbnails: {e}")
+
+        try:
             cmd = "flatpak list --app".split(" ")
             result = subprocess.run(cmd, capture_output=True, text=True)
             lines = result.stdout.splitlines()
@@ -270,18 +310,21 @@ class FlatpakApp(QWidget):
 
             self.nameLabel.setText(f"Name: {app_name}")
             self.descriptionText.setText(description)
-            self.clearLayout(self.screenshotLayout)
+            #self.clearLayout(self.screenshotLayout)
 
-            for screenshot_url in screenshots:
-                response = requests.get(screenshot_url)
-                response.raise_for_status()
-                pixmap = QPixmap()
-                pixmap.loadFromData(response.content)
+                   
+            #app_id = app_url.split('/')[-1]
+            #screenshots, thumbnails, description = self.get_data_from_appstream(app_id)
+            #for screenshot_url in screenshots:
+            #    response = requests.get(screenshot_url)
+            #    response.raise_for_status()
+            #    pixmap = QPixmap()
+            #    pixmap.loadFromData(response.content)
 
-                label = QLabel()
-                label.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            #    label = QLabel()
+            #    label.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
                 #label.setFixedSize(400, 280)
-                self.screenshotLayout.addWidget(label)
+            #    self.screenshotLayout.addWidget(label)
 
         except Exception as e:
             print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
@@ -296,7 +339,7 @@ class FlatpakApp(QWidget):
                     description = 'Beschreibung nicht gefunden'
                 self.nameLabel.setText(f"Name: {app_name}")
                 self.descriptionText.setText(description)
-                self.clearLayout(self.screenshotLayout)
+
             
             except Exception as e:
                 print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
