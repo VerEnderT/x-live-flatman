@@ -66,7 +66,7 @@ class MyWidget(QWidget):
 
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)  # Entfernt die Fensterdekoration
-        self.adjustSze()
+        self.adjustSize()
         self.show()
 
     def get_current_theme(self):
