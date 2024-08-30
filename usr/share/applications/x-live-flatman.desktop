@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=0.0.2
+Type=Application
+Name=X-Live FlatMan 
+Comment[de]=Software Manager für Flatpak Anwendungen
+Comment=Software Manager for Flatpak applications
+Exec=x-live-flatman
+Icon=x-live-flatman
+Categories=Utility;
+Keywords=flat;flathub;flarpak;container;
+StartupNotify=true
+X-GNOME-UsesNotifications=true
+GenericName=Flatpak Manager 
