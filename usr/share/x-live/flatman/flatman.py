@@ -6,31 +6,34 @@ import requests
 import subprocess
 import re
 from bs4 import BeautifulSoup
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox, QLineEdit
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import Qt, QProcess
+import tempfile
+from PIL import Image
 
 class FlatpakApp(QWidget):
     def __init__(self):
         super().__init__()
         self.data_file = "/tmp/x-live/flatpak/program_data.json"
         self.program_data = {}  # Speichert die Kategorie, URL und Details der Programme
-        self.categories_ordered = ["trending","Game","Office","Graphics","AudioVideo","Utility","Network","Education","Science","Development","System"]  # Geordnete Liste der Kategorien
+        #self.categories_ordered = ["popular","recently-added","trending","Game","Office","Graphics","AudioVideo","Utility","Network","Education","Science","Development","System"]  # Geordnete Liste der Kategorien
+        
+        self.categories_ordered = ["Beliebt","Im Trend","Neu hinzugefügt","Spiele","Büro","Grafik","AudioVideo","Zubehör","Internet","Bildung","Wissenschaft","Entwicklung","System"]  # Geordnete Liste der Kategorien
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle("X-Live FlatMan")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 840, 600)
         self.setWindowIcon(QIcon("/usr/share/pixmaps/x-live-flatman.png"))
         lwidth = 200
         desheight = 150
         catheight = 100
-        sshotheight = 350
-        statuswidth= 500
+        sshotheight = 400
+        statuswidth= 620
         statusheight= 15
         self.process = None
         layout = QHBoxLayout()
-
         self.leftLayout = QVBoxLayout()
         self.rightLayout = QVBoxLayout()
         self.buttonLayout = QHBoxLayout()
@@ -72,6 +75,13 @@ class FlatpakApp(QWidget):
         self.statusLabel = QLabel("")
         self.rightLayout.addWidget(self.statusLabel)
         self.statusLabel.setFixedSize(statuswidth,statusheight)
+
+        # Suchleiste
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Apps filtern...")
+        self.search_input.textChanged.connect(self.filter_list)
+        self.buttonLayout.addWidget(self.search_input)
+        
         
         self.installButton = QPushButton("Installieren")
         self.buttonLayout.addWidget(self.installButton)
@@ -137,84 +147,11 @@ class FlatpakApp(QWidget):
     def loadCategories(self):
         self.hide()
         os.system("appstreamcli refresh-cache")
-        cmd = ["python3", "/usr/share/x-live/flatman/warten.py"]  # Beispielprogramm; passe dies an das Programm an, das du starten möchtest
-    
-        # Starten des Prozesses ohne Einfluss auf das Hauptprogramm
-        process = subprocess.Popen(
-            cmd,
-            start_new_session=True,  # Startet den Prozess in einer neuen Sitzung
-            stdout=subprocess.DEVNULL,  # Verhindert Ausgabe des gestarteten Prozesses in der Konsole
-            stderr=subprocess.DEVNULL,  # Verhindert Fehlerausgabe in der Konsole
-        )
-
-        base_urls = [
-            "https://flathub.org/de/apps/collection/trending/",
-            "https://flathub.org/de/apps/category/Game/",
-            "https://flathub.org/de/apps/category/Office/",
-            "https://flathub.org/de/apps/category/Graphics/",
-            "https://flathub.org/de/apps/category/AudioVideo/",
-            "https://flathub.org/de/apps/category/Utility/",
-            "https://flathub.org/de/apps/category/Network/",
-            "https://flathub.org/de/apps/category/Education/",
-            "https://flathub.org/de/apps/category/Science/",
-            "https://flathub.org/de/apps/category/Development/",
-            "https://flathub.org/de/apps/category/System/"
-        ]
-
-        self.categories_ordered = []  # Zurücksetzen der geordneten Liste
-        self.program_data = {}
-
-        for base_url in base_urls:
-            category_name = base_url.split('/')[-2]
-            self.categories_ordered.append(category_name)  # Kategorien in der gewünschten Reihenfolge speichern
-            page_number = 1
-            while True:
-                url = f"{base_url}{page_number}"
-                #print(f"[DEBUG] Sende Anfrage an: {url}")
-                try:
-                    response = requests.get(url)
-                    response.raise_for_status()
-                except requests.exceptions.RequestException as e:
-                    break
-
-                try:
-                    soup = BeautifulSoup(response.text, "html.parser")
-                    app_links = soup.find_all("a", class_="bg-flathub-white")
-                    if not app_links:
-                        break
-
-                    for link in app_links:
-                        app_name_tag = link.find("span", class_="truncate")
-                        if app_name_tag:
-                            app_name = app_name_tag.text.strip()
-                            app_url = "https://flathub.org" + link.get("href")
-                            self.program_data[app_name] = {
-                                "category": category_name,
-                                "url": app_url
-                            }
-
-                    page_number += 1
-
-                except Exception as e:
-                    #print(f"[ERROR] Fehler beim Verarbeiten der Seite: {e}")
-                    break
-        
-        command = ['pkill', '-f', 'python3 /usr/share/x-live/flatman/warten.py']        
-        result = subprocess.run(command, text=True)
-        
+        os.system("python3 /usr/share/x-live/flatman/update.py") 
         self.show()
-        self.saveData()
+        self.loadSavedData()
         self.displayCategories()
 
-    def saveData(self):
-        output_dir = os.path.dirname(self.data_file)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-            #print(f"[DEBUG] Verzeichnis erstellt: {output_dir}")
-
-        with open(self.data_file, "w") as f:
-            json.dump(self.program_data, f)
-        #print(f"[DEBUG] Daten gespeichert in: {self.data_file}")
 
     def displayCategories(self):
         self.show()
@@ -227,6 +164,7 @@ class FlatpakApp(QWidget):
 
     def loadPrograms(self):
         category = self.categoryList.currentText()
+        self.search_input.clear()
         self.programList.clear()
         # Programme alphabetisch sortieren, bevor sie hinzugefügt werden
         sorted_programs = sorted([app_name for app_name, data in self.program_data.items() if data["category"] == category])
@@ -246,19 +184,56 @@ class FlatpakApp(QWidget):
         except Exception as e:
             pass
 
+    def get_flatpak_info(self, app_id):
+        url = f"https://flathub.org/api/v2/appstream/{app_id}"
+        
+        try:
+            # HTTP GET request
+            response = requests.get(url)
+            response.raise_for_status()  # Raises an exception for HTTP errors
+            
+            # Parse the JSON response
+            data = response.json()
+
+            # Extract description and screenshots
+            description = data.get("description", [])
+            screenshots = data.get("screenshots", [])
+            
+            # Print screenshots URLs
+            screenshot_urls = []
+            for screenshot in screenshots:
+                # Extract the URL of each size of the screenshot
+                for size in screenshot.get("sizes", []):
+                    screenshot_urls.append(size.get("src"))
+            
+            description = []
+            return  screenshot_urls, screenshot_urls[0], description
+        
+        except requests.exceptions.RequestException as e:
+            return f"test - An error occurred: {e}", [], []
+
     def get_data_from_appstream(self, app_id):
         try:
             cmd = f"appstreamcli dump {app_id}".split(" ")
+            cmd = f"appstreamcli dump {app_id}".split(" ")
             result = subprocess.run(cmd, capture_output=True, text=True)
+            #print(f"[DEBUG] {result}")
 
             if result.returncode != 0:
-                #print(f"[ERROR] Fehler beim Abrufen von AppStream-Daten: {result.stderr}")
+                print(f"[ERROR] Fehler beim Abrufen von AppStream-Daten: {result.stderr}")
                 return []
-
+            
             lines = result.stdout.strip().lstrip().replace("\t", "").splitlines()
             screenshots = []
             description = ""
             thumbnails = []
+            string = str(result)
+            desc_start = string.find("<description>")
+            desc_end = string.find("</description>")
+            print("test")
+            #print(string.split("<description>")[1:-1])
+            print(f"start: {desc_start} ende: {desc_end}")
+            print(string[desc_start+13:desc_end-1].replace("</p>","\n").replace("\\n","\n").replace("<p>",""))
             for line in lines:
                 testline = line[line.find("<"):]
                 if testline.startswith('<image type="source"'):
@@ -270,39 +245,49 @@ class FlatpakApp(QWidget):
                     url = url[:url.find("<")]
                     thumbnails.append(url)
                 if testline.startswith('<p>'):
-                    description = (description+testline[testline.find("<p>"):]).replace("</p>", "").replace("<p>", "")
+                    description = (description+testline[testline.find("<p>"):]).replace("</p>", "\n").replace("<p>", "")
+            
+            description = ""
             return screenshots, thumbnails, description
 
         except Exception as e:
             #print(f"[ERROR] Fehler beim Verarbeiten von AppStream-Daten: {e}")
             return []
 
+    def convert_image_format(self, input_file, output_file):
+        with Image.open(input_file) as img:
+            img.convert("RGB").save(output_file, "JPEG")  # Konvertiere in JPEG
+
     def displayProgramDetails(self, app_url, app_name):
-        #print(f"[DEBUG] Lade Details für Programm: {app_url}")
         self.app_id = app_url.split('/')[-1]
         try:
             app_id = app_url.split('/')[-1]
-            screenshots, thumbnails, description = self.get_data_from_appstream(app_id)
-            if thumbnails:
-                screenshot_url = thumbnails[0]
-            else:
-                if screenshots:
-                    screenshot_url = screenshots[0]
-            if screenshot_url:
-                response = requests.get(screenshot_url)
-                response.raise_for_status()
-                pixmap = QPixmap()
-                pixmap.loadFromData(response.content)
-                self.screenshotlabel.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            else:
-                pixmap = QPixmap("/usr/share/x-live/flatman/no_screenshot.png")
-                self.screenshotlabel.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            screenshots_1, thumbnails_1, description = self.get_flatpak_info(app_id)
 
+            # Bild von der URL herunterladen
+            response = requests.get(thumbnails_1)
+            
+            if response.status_code == 200:
+                # Temporäre Datei für das Bild erstellen
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.webp') as temp_file:
+                    temp_file.write(response.content)
+                    temp_file_path = temp_file.name
+
+                self.convert_image_format(temp_file_path, 'downloaded_image.jpg')  # Konvertiere in JPG
+                pixmap = QPixmap('downloaded_image.jpg')  # Lade das konvertierte Bild
+
+                if pixmap.isNull():
+                    self.screenshotlabel.setText("Fehler beim Laden des WebP-Bildes.")
+                else:
+                    self.screenshotlabel.setPixmap(pixmap.scaled(600, 380, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
+            else:
+                self.screenshotlabel.setText("Fehler beim Herunterladen des Bildes.")
 
         except Exception as e:
-            #print(f"[ERROR] Fehler beim Abrufen des Thumbnails: {e}")
+            print(f"[ERROR] Fehler beim Abrufen des Thumbnails: {e}")
             pixmap = QPixmap("/usr/share/x-live/flatman/no_screenshot.png")
-            self.screenshotlabel.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            self.screenshotlabel.setPixmap(pixmap.scaled(600, 380, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
         try:
             cmd = "flatpak list --app".split(" ")
@@ -325,35 +310,26 @@ class FlatpakApp(QWidget):
 
             self.nameLabel.setText(f"Name: {app_name}")
             self.descriptionText.setText(description)
-            #self.clearLayout(self.screenshotLayout)
 
                    
-            #app_id = app_url.split('/')[-1]
-            #screenshots, thumbnails, description = self.get_data_from_appstream(app_id)
-            #for screenshot_url in screenshots:
-            #    response = requests.get(screenshot_url)
-            #    response.raise_for_status()
-            #    pixmap = QPixmap()
-            #    pixmap.loadFromData(response.content)
-
-            #    label = QLabel()
-            #    label.setPixmap(pixmap.scaled(400, 280, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-                #label.setFixedSize(400, 280)
-            #    self.screenshotLayout.addWidget(label)
-
         except Exception as e:
-            #print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
+            print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
             try:
                 response = requests.get(app_url)
+                
                 response.raise_for_status()
                 soup = BeautifulSoup(response.text, "html.parser")
                 description_div = soup.find('div', class_='prose dark:prose-invert xl:max-w-[75%]')
                 if description_div:
                     description = description_div.get_text(strip=True)
+                    
+                    print(description.replace("  ","").replace("\t",""))
+                    description = description.replace("\t","").replace("\n","")
+                    description = re.sub(r'\s+', ' ', description)
                 else:
                     description = 'Beschreibung nicht gefunden'
                 self.nameLabel.setText(f"Name: {app_name}")
-                self.descriptionText.setText(description)
+                self.descriptionText.setText("[soup]"+description)
 
             
             except Exception as e:
@@ -366,6 +342,14 @@ class FlatpakApp(QWidget):
                 child = layout.takeAt(0)
                 if child.widget() is not None:
                     child.widget().deleteLater()
+
+
+    def filter_list(self):
+        """ Die Liste der Notizen basierend auf der Benutzereingabe filtern """
+        filter_text = self.search_input.text().lower()
+        for row in range(self.programList.count()):
+            item = self.programList.item(row)
+            item.setHidden(filter_text not in item.text().lower())
 
     # Farbprofil abrufen und anwenden
 
@@ -409,8 +393,7 @@ class FlatpakApp(QWidget):
         except IOError as e:
             #print(f"Error reading file: {e}")
             return None
-            
-            
+                     
     def background_color(self):
         theme_name = self.get_current_theme()
         if theme_name:
