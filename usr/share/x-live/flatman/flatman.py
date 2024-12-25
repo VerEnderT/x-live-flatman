@@ -329,7 +329,7 @@ class FlatpakApp(QWidget):
                 else:
                     description = 'Beschreibung nicht gefunden'
                 self.nameLabel.setText(f"Name: {app_name}")
-                self.descriptionText.setText("[soup]"+description)
+                self.descriptionText.setText("" + description)
 
             
             except Exception as e:
