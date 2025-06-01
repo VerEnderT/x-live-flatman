@@ -69,13 +69,24 @@ def get_flatpak_info(app_id):
             return "", "" , ["none"]
 
 def translate_text(text, source="en", target="de"):
-    result = subprocess.run(
-        ["trans", f"-b", f":{target}", str(text)],
-        stdout=subprocess.PIPE,
-        text=True
-    )
-    #print("[debug]",str(result.stdout.strip()))
-    return str(result.stdout.strip())
+    if os.path.exists(trans_file):
+        result = subprocess.run(
+            [trans_file, f"-b", f":{target}", str(text)],
+            stdout=subprocess.PIPE,
+            text=True
+        )
+        #print("[debug]",str(result.stdout.strip()))
+        return str(result.stdout.strip())
+    else:
+        cmd=["cd",config_dir,"&&","wget","git.io/trans","&&","chmod","+x","./trans"]
+        result = subprocess.run(
+            [trans_file, f"-b", f":{target}", str(text)],
+            stdout=subprocess.PIPE,
+            text=True
+        )
+        #print("[debug]",str(result.stdout.strip()))
+        return str(result.stdout.strip())
+
 
 def get_all_apps():
     try:
@@ -121,6 +132,10 @@ def get_all_apps():
 raw_path = "~/.config/x-live/flatman/program_data.json"
 data_file = os.path.expanduser(raw_path)
 bak_file = "/usr/share/x-live/flatman/program_data.json"
+config_dir = os.path.expanduser("~/.config/x-live/flatman/")
+trans_file = config_dir + "trans"
+if not os.path.exists(config_dir):
+    os.makedirs(config_dir)
 
 program_data = loadSavedData()  # Speichert die Kategorie, URL und Details der Programme
 

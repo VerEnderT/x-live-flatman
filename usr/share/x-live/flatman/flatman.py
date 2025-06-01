@@ -27,6 +27,9 @@ class FlatpakApp(QWidget):
         self.config_dir = os.path.expanduser("~/.config/x-live/flatman/")
         self.data_file = self.config_dir + "program_data.json"
         self.fav_file = self.config_dir + "favorites.json"
+        self.trans_file = self.config_dir + "trans"
+        if not os.path.exists(config_dir):
+            os.makedirs(config_dir)
         self.program_data = {}  # Speichert die Kategorie, URL und Details der Programme
         
         self.categories_ordered = ["Favoriten","Spiele","Büro","Grafik","AudioVideo","Zubehör","Internet","Bildung","Wissenschaft","Entwicklung","System","Andere","Installiert"]  # Geordnete Liste der Kategorien
@@ -379,14 +382,34 @@ class FlatpakApp(QWidget):
             self.descriptionText.setText("")
 
 
-    def translate_text(self, text, source="en", target="de"):
+    def translate_text_old(self, text, source="en", target="de"):
         result = subprocess.run(
-            ["trans", f"-b", f":{target}", text],
+            [self.trans_file, f"-b", f":{target}", text],
             stdout=subprocess.PIPE,
             text=True
         )
         #print("[debug]",str(result.stdout.strip()))
         return str(result.stdout.strip())
+
+    def translate_text(self, text, source="en", target="de"):
+        if os.path.exists(trans_file):
+            result = subprocess.run(
+                [self.trans_file, f"-b", f":{target}", str(text)],
+                stdout=subprocess.PIPE,
+                text=True
+            )
+            #print("[debug]",str(result.stdout.strip()))
+            return str(result.stdout.strip())
+        else:
+            cmd=["cd",self.config_dir,"&&","wget","git.io/trans","&&","chmod","+x","./trans"]
+            result = subprocess.run(
+                [self.trans_file, f"-b", f":{target}", str(text)],
+                stdout=subprocess.PIPE,
+                text=True
+            )
+            #print("[debug]",str(result.stdout.strip()))
+            return str(result.stdout.strip())
+
 
     def clearLayout(self, layout):
         if layout is not None:
