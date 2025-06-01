@@ -28,8 +28,8 @@ class FlatpakApp(QWidget):
         self.data_file = self.config_dir + "program_data.json"
         self.fav_file = self.config_dir + "favorites.json"
         self.trans_file = self.config_dir + "trans"
-        if not os.path.exists(config_dir):
-            os.makedirs(config_dir)
+        if not os.path.exists(self.config_dir):
+            os.makedirs(self.config_dir)
         self.program_data = {}  # Speichert die Kategorie, URL und Details der Programme
         
         self.categories_ordered = ["Favoriten","Spiele","Büro","Grafik","AudioVideo","Zubehör","Internet","Bildung","Wissenschaft","Entwicklung","System","Andere","Installiert"]  # Geordnete Liste der Kategorien
