@@ -16,7 +16,6 @@ curl -L https://raw.githubusercontent.com/soimort/translate-shell/master/transla
 chmod +x translate.sh
 sudo mv translate.sh /usr/local/bin/trans
 
-3. Flatman installieren
-lade dir flatman.deb herunter und installiere es mit
+3. flatman.deb herunterladen und installieren mit
 
 sudo apt install ./flatman.deb
