@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-
 import os
 import json
 import requests
@@ -8,40 +7,126 @@ import subprocess
 import re
 from bs4 import BeautifulSoup
 
-data_file = "/tmp/x-live/flatpak/program_data.json"
-program_data = {}  # Speichert die Kategorie, URL und Details der Programme
+
+def loadSavedData():
+    if os.path.exists(data_file):
+        with open(data_file, "r") as f:
+            program_data = json.load(f)
+        return program_data
+    else:
+        with open(bak_file, "r") as f:
+            program_data = json.load(f)
+        return program_data
+
+def check_category(app_categories):
+    categories = [
+    "Game",
+    "Office",
+    "Graphics",
+    "AudioVideo",
+    "Utility",
+    "Network",
+    "Education",
+    "Science",
+    "Development",
+    "System"]
+    for wort1 in categories:
+        for wort2 in app_categories:
+            if wort1 == wort2:  # Exakter Vergleich
+                return wort1
+    return "Other"
+
+def get_flatpak_info(app_id):
+    url = f"https://flathub.org/api/v2/appstream/{app_id}"
+    
+    try:
+        # HTTP GET request
+        response = requests.get(url)
+        response.raise_for_status()  # Raises an exception for HTTP errors
+        
+        # Parse the JSON response
+        data = response.json()
+        #print(f"[debug] {data}")
+
+        # Extract description and screenshots
+        description = data.get("description", [])
+        screenshots = data.get("screenshots", [])
+        app_categories = data.get("categories", [])
+        
+        screenshot_url = ""
+        if screenshots:
+            screenshot = screenshots[0]
+            size = screenshot.get("sizes", [])[0]
+            screenshot_url = size.get("src")
+        return  screenshot_url, description,app_categories
+    
+    except requests.exceptions.RequestException as e:
+        if e.response.status_code == 404:
+            #print(f"404 - App nicht gefunden: {app_id}")
+            return "", "" , ["none"]
+        else: 
+            #print(f"An error occurred: {e}")
+            return "", "" , ["none"]
+
+def translate_text(text, source="en", target="de"):
+    result = subprocess.run(
+        ["trans", f"-b", f":{target}", str(text)],
+        stdout=subprocess.PIPE,
+        text=True
+    )
+    #print("[debug]",str(result.stdout.strip()))
+    return str(result.stdout.strip())
+
+def get_all_apps():
+    try:
+        result = subprocess.run(
+            ["flatpak", "remote-ls", "--app", "--columns=name,application,version,installed-size,description"],
+            capture_output=True,
+            text=True,  # Dekodiert die Ausgabe als String
+            check=True  # Wirft eine CalledProcessError, wenn der Befehl fehlschlägt
+        )
+        output = result.stdout
+
+        # Verarbeitung mit awk in Python (effizienter als externer awk-Aufruf)
+        app_names = []
+        app_ids = []
+        app_versions = []
+        app_sizes = []
+        app_desc_shorts = []
+        for line in output.splitlines():
+            parts = line.split('\t')
+            #print(parts,len(parts))
+            if len(parts) > 1:
+                app_names.append(parts[0])
+                app_ids.append(parts[1])
+                app_versions.append(parts[2])
+                app_sizes.append(parts[3])
+            if len(parts) > 4:
+                app_desc_shorts.append(parts[4])
+            else: 
+                app_desc_shorts.append(" ")
+
+        return app_ids, app_names, app_versions, app_sizes, app_desc_shorts
+
+    except subprocess.CalledProcessError as e:
+        print(f"Fehler beim Ausführen von flatpak: {e}")
+        print(f"Stderr: {e.stderr}") # Gibt Fehlermeldungen aus
+        return None
+    except FileNotFoundError:
+        print("Fehler: flatpak ist nicht installiert.")
+        return None
+
+## Hauptprogramm
+
+raw_path = "~/.config/x-live/flatman/program_data.json"
+data_file = os.path.expanduser(raw_path)
+bak_file = "/usr/share/x-live/flatman/program_data.json"
+
+program_data = loadSavedData()  # Speichert die Kategorie, URL und Details der Programme
 
 os.system("appstreamcli refresh-cache 1>>/dev/null")
-#cmd = ["python3", "/usr/share/x-live/flatman/warten.py"]  # Beispielprogramm; passe dies an das Programm an, das du starten möchtest
-
-# Starten des Prozesses ohne Einfluss auf das Hauptprogramm
-#process = subprocess.Popen(
-#    cmd,
-#    start_new_session=True,  # Startet den Prozess in einer neuen Sitzung
-#    stdout=subprocess.DEVNULL,  # Verhindert Ausgabe des gestarteten Prozesses in der Konsole
-#    stderr=subprocess.DEVNULL,  # Verhindert Fehlerausgabe in der Konsole
-##)
-
-base_urls = [
-    "https://flathub.org/apps/collection/popular/",
-    "https://flathub.org/de/apps/collection/trending/",
-    "https://flathub.org/de/apps/collection/recently-added/",
-    "https://flathub.org/de/apps/category/Game/",
-    "https://flathub.org/de/apps/category/Office/",
-    "https://flathub.org/de/apps/category/Graphics/",
-    "https://flathub.org/de/apps/category/AudioVideo/",
-    "https://flathub.org/de/apps/category/Utility/",
-    "https://flathub.org/de/apps/category/Network/",
-    "https://flathub.org/de/apps/category/Education/",
-    "https://flathub.org/de/apps/category/Science/",
-    "https://flathub.org/de/apps/category/Development/",
-    "https://flathub.org/de/apps/category/System/"
-]
 
 names = {
-    "popular":"Beliebt",
-    "trending":"Im Trend",
-    "recently-added":"Neu hinzugefügt",
     "Game":"Spiele",
     "Office":"Büro",
     "Graphics":"Grafik",
@@ -51,57 +136,45 @@ names = {
     "Education":"Bildung",
     "Science":"Wissenschaft",
     "Development":"Entwicklung",
-    "System":"System"
+    "System":"System",
+    "Other":"Andere"
 }
 
-categories_ordered = ["Beliebt","Im Trend","Neu hinzugefügt","Spiele","Büro","Grafik","AudioVideo","Zubehör","Internet","Bildung","Wissenschaft","Entwicklung","System"]  # Geordnete Liste der Kategorien
-categories_ordered = []  # Zurücksetzen der geordneten Liste
-program_data = {}
-counter=0
+#program_data = {}
+zaehler = 0
+app_ids, app_names, app_versions, app_sizes, app_desc_shorts = get_all_apps()
+count_cmd = f"echo Daten zu 0% aktuallisiert 0 Apps erfasst !!"
+os.system(count_cmd)
+for x,app in enumerate(app_ids):
+    pro = int(x/len(app_ids)*100)
+    app_name = app_names[x].strip()
+    app_id = app
+    app_version = app_versions[x].strip()
+    app_size = app_sizes[x].strip()
+    app_short_desc = app_desc_shorts[x].strip()
 
-for base_url in base_urls:
-    category_base = base_url.split('/')[-2]
-    category_name = names[category_base]
-    counter = counter + 1
-    pro = int(counter/len(base_urls)*100)
-    count_cmd = f"echo Daten zu {pro}% aktuallisiert"
+
+    if program_data.get(app_name, {}).get("id") == None:
+        
+        thumbnail, description_en, app_categories = get_flatpak_info(app_id)
+        checked_cat = check_category(app_categories)
+        category_name = names[checked_cat]
+        if app_categories != ["none"]:
+            zaehler = zaehler + 1
+            program_data[app_name] = {
+                "category": category_name,
+                "id": app_id,
+                "description": translate_text(description_en),
+                "thumbnail": thumbnail,
+                "version": app_version,
+                "size": app_size,
+                "short-desc": translate_text(app_short_desc)
+            }
+            #cmd_name = f"echo !!! {app_name} datenbank hinzugefügt !!!"
+            #os.system(cmd_name)
+
+    count_cmd = f"echo Daten zu {pro}% aktuallisiert {x+1}/{len(app_ids)+1} Apps erfasst !! {zaehler} Apps hinzugefügt "
     os.system(count_cmd)
-    categories_ordered.append(category_name)  # Kategorien in der gewünschten Reihenfolge speichern
-    page_number = 1
-    while True:
-        url = f"{base_url}{page_number}"
-        #print(f"[DEBUG] Sende Anfrage an: {url}")
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            break
-
-        try:
-            soup = BeautifulSoup(response.text, "html.parser")
-            app_links = soup.find_all("a", class_="bg-flathub-white")
-            if not app_links:
-                break
-
-            for link in app_links:
-                app_name_tag = link.find("span", class_="truncate")
-                if app_name_tag:
-                    app_name = app_name_tag.text.strip()
-                    app_url = "https://flathub.org" + link.get("href")
-                    #print(app_url)
-                    program_data[app_name] = {
-                        "category": category_name,
-                        "url": app_url
-                    }
-
-            page_number += 1
-
-        except Exception as e:
-            #print(f"[ERROR] Fehler beim Verarbeiten der Seite: {e}")
-            break
-
-#command = ['pkill', '-f', 'python3 /usr/share/x-live/flatman/warten.py']        
-#result = subprocess.run(command, text=True)
 
 output_dir = os.path.dirname(data_file)
 if not os.path.exists(output_dir):

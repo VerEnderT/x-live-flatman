@@ -6,32 +6,45 @@ import requests
 import subprocess
 import re
 from bs4 import BeautifulSoup
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox, QLineEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox, QLineEdit
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtCore import Qt, QProcess
+from PyQt5.QtCore import Qt, QProcess, QSize
 import tempfile
 from PIL import Image
+
+
 
 class FlatpakApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.data_file = "/tmp/x-live/flatpak/program_data.json"
+        self.reload = False
+
+        # Erstelle eine Kopie der aktuellen Umgebung
+        self.env = dict(subprocess.os.environ)
+        # Setze LC_ALL auf C
+        self.env["LC_ALL"] = "C"
+
+        self.config_dir = os.path.expanduser("~/.config/x-live/flatman/")
+        self.data_file = self.config_dir + "program_data.json"
+        self.fav_file = self.config_dir + "favorites.json"
         self.program_data = {}  # Speichert die Kategorie, URL und Details der Programme
-        #self.categories_ordered = ["popular","recently-added","trending","Game","Office","Graphics","AudioVideo","Utility","Network","Education","Science","Development","System"]  # Geordnete Liste der Kategorien
         
-        self.categories_ordered = ["Beliebt","Im Trend","Neu hinzugefügt","Spiele","Büro","Grafik","AudioVideo","Zubehör","Internet","Bildung","Wissenschaft","Entwicklung","System"]  # Geordnete Liste der Kategorien
+        self.categories_ordered = ["Favoriten","Spiele","Büro","Grafik","AudioVideo","Zubehör","Internet","Bildung","Wissenschaft","Entwicklung","System","Andere","Installiert"]  # Geordnete Liste der Kategorien
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle("X-Live FlatMan")
-        self.setGeometry(100, 100, 840, 600)
+        self.setGeometry(200, 20, 840, 600)
         self.setWindowIcon(QIcon("/usr/share/pixmaps/x-live-flatman.png"))
         lwidth = 200
-        desheight = 150
+        self.lwidth = lwidth
+        desheight = 200
         catheight = 100
-        sshotheight = 400
+        sshotheight = 320
         statuswidth= 620
         statusheight= 15
+        
+        self.last_item = None
         self.process = None
         layout = QHBoxLayout()
         self.leftLayout = QVBoxLayout()
@@ -41,10 +54,13 @@ class FlatpakApp(QWidget):
 
         self.categoryLabel = QLabel("Kategorien:")
         self.categoryLabel.setFixedWidth(lwidth)
+
         self.leftLayout.addWidget(self.categoryLabel)
 
         self.categoryList = QComboBox()
         self.categoryList.setFixedWidth(lwidth)
+        self.categoryList.setFocusPolicy(Qt.NoFocus)
+        self.categoryList.currentIndexChanged.connect(self.loadPrograms)
         self.leftLayout.addWidget(self.categoryList)
 
         self.programLabel = QLabel("Programme:")
@@ -54,6 +70,7 @@ class FlatpakApp(QWidget):
         self.programList = QListWidget()
         self.programList.currentItemChanged.connect(self.onProgramClicked)
         self.programList.setFixedWidth(lwidth)
+        self.programList.setFocusPolicy(Qt.NoFocus)
         self.leftLayout.addWidget(self.programList)
         self.programList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.programList.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -100,6 +117,13 @@ class FlatpakApp(QWidget):
         self.uninstallButton.clicked.connect(self.uninstall_start)
         self.uninstallButton.setStyleSheet(""" QPushButton {background: red;color: black;} QPushButton:disabled {background: gray;color: light_gray;}""")
 
+        self.favButton = QPushButton(" ❤ ")
+        self.buttonLayout.addWidget(self.favButton)
+        self.favButton.setFixedSize(24,24)
+        self.favButton.clicked.connect(self.fav_btn_clicked)
+        self.favButton.setStyleSheet(""" QPushButton {background: grey;color: white;font-size: 26px;} QPushButton:disabled {background: gray;color: light_gray;}""")
+        self.favButton.setToolTip("zu Favoriten hinzufügen")
+
         self.screenshotArea = QScrollArea()
         self.screenshotContainer = QWidget()
         self.screenshotArea.setFixedHeight(sshotheight)
@@ -121,8 +145,6 @@ class FlatpakApp(QWidget):
         self.descriptionText.setFixedHeight(desheight)
         self.rightLayout.addWidget(self.descriptionText)
 
-        #self.screenshotLabel = QLabel("Screenshots:")
-        #self.rightLayout.addWidget(self.screenshotLabel)
 
 
         layout.addLayout(self.leftLayout)
@@ -131,18 +153,29 @@ class FlatpakApp(QWidget):
         self.setLayout(layout)
         self.background_color()
         #self.show()
-
+        self.loadSavedFavorites()
         self.loadSavedData()
 
     def loadSavedData(self):
         if os.path.exists(self.data_file):
-            with open(self.data_file, "r") as f:
-                self.program_data = json.load(f)
+            try:
+                with open(self.data_file, "r") as f:
+                    self.program_data = json.load(f)
             #print("lädt daten")
             #print(f"data: {self.categories_ordered}")
-            self.displayCategories()
+                self.displayCategories()
+
+            except Exception as e:
+                self.loadCategories()
         else:
             self.loadCategories()
+
+    def loadSavedFavorites(self):
+        if os.path.exists(self.fav_file):
+            with open(self.fav_file, "r") as f:
+                self.favorites = json.load(f)
+        else:
+            self.favorites=["VLC","0 A.D.","ONLYOFFICE Desktop Editors","Hedgewars","Brave"]
 
     def loadCategories(self):
         self.hide()
@@ -150,122 +183,152 @@ class FlatpakApp(QWidget):
         os.system("python3 /usr/share/x-live/flatman/update.py") 
         self.show()
         self.loadSavedData()
-        self.displayCategories()
-
 
     def displayCategories(self):
         self.show()
         self.categoryList.clear()
         for category in self.categories_ordered:
             self.categoryList.addItem(category)
-        self.categoryList.currentIndexChanged.connect(self.loadPrograms)        
+
         self.categoryList.setCurrentIndex(0)
         self.loadPrograms()
+
 
     def loadPrograms(self):
         category = self.categoryList.currentText()
         self.search_input.clear()
         self.programList.clear()
-        # Programme alphabetisch sortieren, bevor sie hinzugefügt werden
-        sorted_programs = sorted([app_name for app_name, data in self.program_data.items() if data["category"] == category])
+
+        # Programme alphabetisch sortieren
+        if category == "Installiert":
+            sorted_programs = self.loadInstalled()
+        elif category == "Favoriten":
+            sorted_programs = sorted(self.favorites)
+        else:
+            sorted_programs = sorted([
+                app_name for app_name, data in self.program_data.items()
+                if data["category"] == category
+            ])
+
         for app_name in sorted_programs:
-            self.programList.addItem(app_name)        
-        self.programList.setCurrentRow(0)
+            beschreibung = self.program_data.get(app_name, {}).get("short-desc", "")
+            tooltip = beschreibung
+            if beschreibung and len(beschreibung) > 50:
+                beschreibung = beschreibung[:50].rstrip() + " …"
 
-    def onProgramClicked(self, item):
+
+            # HTML-Text definieren
+            html = f"""
+            <div>
+                <span style="font-size:14pt; font-weight:bold;">{app_name}</span><br>
+                <span style="font-size:10pt; color:gray;">{beschreibung}</span>
+            </div>
+            """
+
+            # Widget mit QLabel (HTML)
+            widget = QWidget()
+            layout = QVBoxLayout()
+            layout.setContentsMargins(1, 1, 1, 1)
+
+
+            label = QLabel()
+            label.setText(html)
+            label.setTextFormat(Qt.RichText)
+            label.setWordWrap(True)
+            label.setToolTip(tooltip)
+
+            layout.addWidget(label)
+            widget.setLayout(layout)
+
+            item = QListWidgetItem()
+            self.programList.addItem(item)
+            self.programList.setItemWidget(item, widget)
+            item.setSizeHint(QSize(int(self.lwidth*0.9),int(widget.sizeHint().height()*1.2)))
+
+            item.setData(Qt.UserRole, app_name)  # Speichert Programmnamen "unsichtbar" im Item
+
+
+        if self.programList.count() > 0:
+            self.programList.setCurrentRow(0)
+
+
+    def loadInstalled(self):
         try:
-            app_name = item.text()
-            #print(item.text)
-            app_url = self.program_data.get(app_name, {}).get("url")
-            self.last_item = item
-            if app_url:
-                self.displayProgramDetails(app_url, app_name)
+            result = subprocess.run(
+                ["flatpak", "list", "--app", "--columns=name"],
+                capture_output=True,
+                env = self.env,
+                text=True,  # Dekodiert die Ausgabe als String
+                check=True  # Wirft eine CalledProcessError, wenn der Befehl fehlschlägt
+            )
+            output = result.stdout.split("\n")
+            #print(f"[Debug] {output}")
+
+            installed_apps= []
+            for line in output:
+                if line.strip() != "":
+                    #print(line)
+                    installed_apps.append(line.strip())
+            return sorted(installed_apps, key=str.lower)
 
         except Exception as e:
-            pass
-
-    def get_flatpak_info(self, app_id):
-        url = f"https://flathub.org/api/v2/appstream/{app_id}"
-        
-        try:
-            # HTTP GET request
-            response = requests.get(url)
-            response.raise_for_status()  # Raises an exception for HTTP errors
-            
-            # Parse the JSON response
-            data = response.json()
-
-            # Extract description and screenshots
-            description = data.get("description", [])
-            screenshots = data.get("screenshots", [])
-            
-            # Print screenshots URLs
-            screenshot_urls = []
-            for screenshot in screenshots:
-                # Extract the URL of each size of the screenshot
-                for size in screenshot.get("sizes", []):
-                    screenshot_urls.append(size.get("src"))
-            
-            description = []
-            return  screenshot_urls, screenshot_urls[0], description
-        
-        except requests.exceptions.RequestException as e:
-            return f"test - An error occurred: {e}", [], []
-
-    def get_data_from_appstream(self, app_id):
-        try:
-            cmd = f"appstreamcli dump {app_id}".split(" ")
-            cmd = f"appstreamcli dump {app_id}".split(" ")
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            #print(f"[DEBUG] {result}")
-
-            if result.returncode != 0:
-                print(f"[ERROR] Fehler beim Abrufen von AppStream-Daten: {result.stderr}")
-                return []
-            
-            lines = result.stdout.strip().lstrip().replace("\t", "").splitlines()
-            screenshots = []
-            description = ""
-            thumbnails = []
-            string = str(result)
-            desc_start = string.find("<description>")
-            desc_end = string.find("</description>")
-            print("test")
-            #print(string.split("<description>")[1:-1])
-            print(f"start: {desc_start} ende: {desc_end}")
-            print(string[desc_start+13:desc_end-1].replace("</p>","\n").replace("\\n","\n").replace("<p>",""))
-            for line in lines:
-                testline = line[line.find("<"):]
-                if testline.startswith('<image type="source"'):
-                    url = testline[testline.find(">")+1:]
-                    url = url[:url.find("<")]
-                    screenshots.append(url)
-                if testline.startswith('<image type="thumbnail"'):
-                    url = testline[testline.find(">")+1:]
-                    url = url[:url.find("<")]
-                    thumbnails.append(url)
-                if testline.startswith('<p>'):
-                    description = (description+testline[testline.find("<p>"):]).replace("</p>", "\n").replace("<p>", "")
-            
-            description = ""
-            return screenshots, thumbnails, description
-
-        except Exception as e:
-            #print(f"[ERROR] Fehler beim Verarbeiten von AppStream-Daten: {e}")
             return []
+            
+    def onProgramClicked(self, item):
+        if not self.reload:
+            self.statusLabel.setText("")
+            self.statusLabel.setStyleSheet("")
+        self.reload = False
+        
+        if item:
+            try:
+                app_name = item.data(Qt.UserRole)
+                app_id = self.program_data.get(app_name, {}).get("id")
+                self.last_item = item
+                self.highlightSelectedItem(item)  # 👈 HIER wird das Styling aktualisiert
+
+                if app_id:
+                    self.displayProgramDetails(app_id, app_name)
+            except Exception as e:
+                print("Fehler beim Klicken:", e)
+
+    def highlightSelectedItem(self, current_item):
+        for index in range(self.programList.count()):
+            item = self.programList.item(index)
+            widget = self.programList.itemWidget(item)
+            if widget:
+                if item == current_item:
+                    widget.setStyleSheet("border: 1px solid #0078d7; border-radius: 5px; padding: 2px;")
+                else:
+                    widget.setStyleSheet("border: none; padding: 2px;")
+
+    def get_flatpak_info(self, app_name):
+        description = self.program_data.get(app_name, {}).get("description")
+        thumbnail = self.program_data.get(app_name, {}).get("thumbnail")
+        info_version = self.program_data.get(app_name, {}).get("version")
+        info_installed = self.program_data.get(app_name, {}).get("size")
+        return thumbnail, description, info_version, info_installed
 
     def convert_image_format(self, input_file, output_file):
         with Image.open(input_file) as img:
             img.convert("RGB").save(output_file, "JPEG")  # Konvertiere in JPEG
 
-    def displayProgramDetails(self, app_url, app_name):
-        self.app_id = app_url.split('/')[-1]
-        try:
-            app_id = app_url.split('/')[-1]
-            screenshots_1, thumbnails_1, description = self.get_flatpak_info(app_id)
+    def displayProgramDetails(self, app_id, app_name):
+        self.app_id = app_id
+        if app_name in self.favorites:
+            self.favButton.setStyleSheet(""" QPushButton {background: green;color: white;font-size: 26px;} QPushButton:disabled {background: gray;color: light_gray;}""")
+            self.favButton.setToolTip("aus Favoriten entfernen")
+        else:         
+            self.favButton.setStyleSheet(""" QPushButton {background: gray;color: white;font-size: 26px;} QPushButton:disabled {background: gray;color: light_gray;}""")
+            self.favButton.setToolTip("zu Favoriten hinzufügen")
 
+        thumbnail, description, info_version, info_installed = self.get_flatpak_info(app_name)
+
+        self.descriptionLabel.setText(f" App-ID: {app_id}\n Version: {info_version}\n Speicherbedarf: {info_installed}\n\nBeschreibung:")
+
+        try:
             # Bild von der URL herunterladen
-            response = requests.get(thumbnails_1)
+            response = requests.get(thumbnail)
             
             if response.status_code == 200:
                 # Temporäre Datei für das Bild erstellen
@@ -279,7 +342,7 @@ class FlatpakApp(QWidget):
                 if pixmap.isNull():
                     self.screenshotlabel.setText("Fehler beim Laden des WebP-Bildes.")
                 else:
-                    self.screenshotlabel.setPixmap(pixmap.scaled(600, 380, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                    self.screenshotlabel.setPixmap(pixmap.scaled(600, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
             else:
                 self.screenshotlabel.setText("Fehler beim Herunterladen des Bildes.")
@@ -287,7 +350,7 @@ class FlatpakApp(QWidget):
         except Exception as e:
             print(f"[ERROR] Fehler beim Abrufen des Thumbnails: {e}")
             pixmap = QPixmap("/usr/share/x-live/flatman/no_screenshot.png")
-            self.screenshotlabel.setPixmap(pixmap.scaled(600, 380, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            self.screenshotlabel.setPixmap(pixmap.scaled(600, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
         try:
             cmd = "flatpak list --app".split(" ")
@@ -307,34 +370,23 @@ class FlatpakApp(QWidget):
 
             self.uninstallButton.setEnabled(True)
             self.installButton.setEnabled(True)
-
-            self.nameLabel.setText(f"Name: {app_name}")
+            #description1 = self.translate_text(description)
             self.descriptionText.setText(description)
-
+            self.nameLabel.setText(f"{app_name}")
                    
         except Exception as e:
-            print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
-            try:
-                response = requests.get(app_url)
-                
-                response.raise_for_status()
-                soup = BeautifulSoup(response.text, "html.parser")
-                description_div = soup.find('div', class_='prose dark:prose-invert xl:max-w-[75%]')
-                if description_div:
-                    description = description_div.get_text(strip=True)
-                    
-                    print(description.replace("  ","").replace("\t",""))
-                    description = description.replace("\t","").replace("\n","")
-                    description = re.sub(r'\s+', ' ', description)
-                else:
-                    description = 'Beschreibung nicht gefunden'
-                self.nameLabel.setText(f"Name: {app_name}")
-                self.descriptionText.setText("" + description)
+            print(f"[ERROR] Fehler beim Abrufen der Programmdetails-hier: {e}")
+            self.descriptionText.setText("")
 
-            
-            except Exception as e:
-                #print(f"[ERROR] Fehler beim Abrufen der Programmdetails: {e}")
-                pass
+
+    def translate_text(self, text, source="en", target="de"):
+        result = subprocess.run(
+            ["trans", f"-b", f":{target}", text],
+            stdout=subprocess.PIPE,
+            text=True
+        )
+        #print("[debug]",str(result.stdout.strip()))
+        return str(result.stdout.strip())
 
     def clearLayout(self, layout):
         if layout is not None:
@@ -343,13 +395,45 @@ class FlatpakApp(QWidget):
                 if child.widget() is not None:
                     child.widget().deleteLater()
 
-
     def filter_list(self):
-        """ Die Liste der Notizen basierend auf der Benutzereingabe filtern """
+        """ Die Liste der Programme basierend auf der Benutzereingabe filtern """
         filter_text = self.search_input.text().lower()
         for row in range(self.programList.count()):
             item = self.programList.item(row)
-            item.setHidden(filter_text not in item.text().lower())
+            widget = self.programList.itemWidget(item)
+            if widget:
+                # Angenommen, das Widget ist ein QLabel
+                app_name = item.data(Qt.UserRole)
+                beschreibung = self.program_data.get(app_name, {}).get("short-desc", "")
+                text = app_name.lower() + " " + beschreibung.lower()
+                item.setHidden(filter_text not in text)
+
+    def fav_btn_clicked(self):
+        app_name = self.last_item.data(Qt.UserRole)
+
+        if app_name in self.favorites:
+            self.favorites.remove(app_name) 
+            self.favButton.setStyleSheet(""" QPushButton {background: gray;color: white;font-size: 26px;}QPushButton:disabled {background: gray;color: light_gray;}""")
+            self.favButton.setToolTip("zu Favoriten hinzufügen")
+
+        else:
+            self.favorites.append(app_name)
+            self.favButton.setStyleSheet(""" QPushButton {background: green;color: white;font-size: 26px;} QPushButton:disabled {background: gray;color: light_gray;}""")
+            self.favButton.setToolTip("aus Favoriten entfernen")
+        self.fav_save()
+            
+
+    def fav_save(self):
+        output_dir = os.path.dirname(self.config_dir)
+        if not os.path.exists(self.config_dir):
+            os.makedirs(self.config_dir)
+            #print(f"[DEBUG] Verzeichnis erstellt: {output_dir}")
+
+        with open(self.fav_file, "w") as f:
+            json.dump(self.favorites, f)
+        #print(f"[DEBUG] Daten gespeichert in: {data_file}")
+
+
 
     # Farbprofil abrufen und anwenden
 
@@ -420,6 +504,7 @@ class FlatpakApp(QWidget):
         self.programList.setEnabled(False)
         self.categoryList.setEnabled(False)
         self.loadButton.setEnabled(False)
+        self.startButton.setEnabled(False)
         self.uninstallButton.setEnabled(False)
         self.installButton.setEnabled(False)
         self.install_package(self.app_id)
@@ -431,21 +516,24 @@ class FlatpakApp(QWidget):
         self.loadButton.setEnabled(False)
         self.uninstallButton.setEnabled(False)
         self.installButton.setEnabled(False)
+        self.startButton.setEnabled(False)
         self.uninstall_package(self.app_id)
 
     def un_install_finished(self):
         self.programList.setEnabled(True)
         self.categoryList.setEnabled(True)
-        self.loadButton.setEnabled(True)
-        self.statusLabel.setText("")        
+        self.loadButton.setEnabled(True)  
+        self.startButton.setEnabled(True)  
         self.process = None  
+        self.reload = True
         self.onProgramClicked(self.last_item)
         
 
 
     def install_package(self,app_id):
         if not self.process:
-            self.statusLabel.setText("Starting package update and installation...\n")
+            self.statusLabel.setText("")
+            self.statusLabel.setStyleSheet("")
             self.process = QProcess(self)
             self.process.setProcessChannelMode(QProcess.MergedChannels)
             self.process.readyRead.connect(self.read_output)
@@ -457,7 +545,8 @@ class FlatpakApp(QWidget):
             
     def uninstall_package(self,app_id):
         if not self.process:
-            self.statusLabel.setText("Starting package uninstallation...\n")
+            self.statusLabel.setText("")
+            self.statusLabel.setStyleSheet("")
             self.process = QProcess(self)
             self.process.setProcessChannelMode(QProcess.MergedChannels)
             self.process.readyRead.connect(self.read_output)
@@ -476,22 +565,26 @@ class FlatpakApp(QWidget):
 
     def process_finished(self, exit_code, exit_status):
         if exit_status == QProcess.NormalExit and exit_code == 0:
-            self.statusLabel.setText("\nInstallation completed successfully.")
-            QMessageBox.information(self, "Success", "Package installed successfully!")
+            self.statusLabel.setText(" "+self.translate_text("Installation completed successfully."))
+            self.statusLabel.setStyleSheet("background-color: green;color: white;")
+            #QMessageBox.information(self, "Success", "Package installed successfully!")
         else:
-            self.statusLabel.setText("\nInstallation failed.")
-            QMessageBox.critical(self, "Error", "Failed to install package.")
+            self.statusLabel.setText(" "+self.translate_text("Installation failed."))
+            self.statusLabel.setStyleSheet("background-color: red;color: white;")
+            #QMessageBox.critical(self, "Error", "Failed to install package.")
             
         self.un_install_finished()
         
             
     def process_finished_remove(self, exit_code, exit_status):
         if exit_status == QProcess.NormalExit and exit_code == 0:
-            self.statusLabel.setText("\nUninstallation completed successfully.")
-            QMessageBox.information(self, "Success", "Package uninstalled successfully!")
+            self.statusLabel.setText(" "+self.translate_text("Uninstallation completed successfully."))
+            self.statusLabel.setStyleSheet("background-color: green;color: white;")
+            #QMessageBox.information(self, "Success", "Package uninstalled successfully!")
         else:
-            self.statusLabel.setText("\nUninstallation failed.")
-            QMessageBox.critical(self, "Error", "Failed to uninstall package.")
+            self.statusLabel.setText(" "+self.translate_text("Uninstallation failed."))
+            self.statusLabel.setStyleSheet("background-color: red;color: white;")
+            #QMessageBox.critical(self, "Error", "Failed to uninstall package.")
         
         self.un_install_finished()
         

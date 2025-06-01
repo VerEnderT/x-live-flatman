@@ -21,13 +21,14 @@ class MyWidget(QWidget):
 
         faktor = app.desktop().height()/720
         self.faktor = app.desktop().height()/720
-        breite = int(250 * faktor)
+        breite = int(650 * faktor)
         hoehe = int(60 * faktor)
         bts=int(16 * faktor)
         sts=int(16 * faktor)
         pos_x = int((app.desktop().width()-breite)/2)
         pos_y = int((app.desktop().height()-hoehe)/2)
         self.background_color()
+        #print(breite," ",hoehe," ",pos_x," ",pos_y)
       
         #  StyleSheet 
         
@@ -62,8 +63,8 @@ class MyWidget(QWidget):
         self.setGeometry(pos_x, pos_y,breite,hoehe)
         self.setWindowIcon(QIcon.fromTheme('settings'))  # Setze das systemweite Theme-Icon als Fenstericon
         self.setWindowTitle("collect Flatpak-data")
-        #self.setMinimumSize(breite, hoehe)  # Festlegen der Größe auf 600x400 Pixel
-        #self.setFixedWidth(breite)
+        self.setMinimumSize(breite, hoehe)  # Festlegen der Größe auf 600x400 Pixel
+        self.setMaximumWidth(int(self.faktor*720/3*2))
         self.setStyleSheet("background: rgba(80,80, 80, 00);")  # Hintergrundfarbe festlegen
 
         self.setAttribute(Qt.WA_TranslucentBackground)
