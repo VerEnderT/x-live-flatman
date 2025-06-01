@@ -23,4 +23,5 @@ sudo apt install ./flatman.deb
 
 -----
 
+![screenshot](flatman.png)
 
