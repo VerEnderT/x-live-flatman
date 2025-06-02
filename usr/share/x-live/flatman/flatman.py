@@ -80,9 +80,18 @@ class FlatpakApp(QWidget):
 
 
         self.loadButton = QPushButton("Daten aktualisieren")
-        self.loadButton.setFixedWidth(lwidth)
+        self.loadButton.setFixedWidth(lwidth-30)
         self.loadButton.clicked.connect(self.loadCategories)
-        self.leftLayout.addWidget(self.loadButton)
+
+        self.aboutButton = QPushButton("")
+        self.aboutButton.setIcon(QIcon("/usr/share/x-live/flatman/about.png"))
+        self.aboutButton.setFixedWidth(40)
+        self.aboutButton.clicked.connect(self.show_about_dialog)
+
+        self.update_about_layout = QHBoxLayout()
+        self.update_about_layout.addWidget(self.aboutButton)
+        self.update_about_layout.addWidget(self.loadButton)
+        self.leftLayout.addLayout(self.update_about_layout)
 
         self.rightPanel = QWidget()
         self.rightLayout.addWidget(self.rightPanel)
@@ -401,7 +410,9 @@ class FlatpakApp(QWidget):
             #print("[debug]",str(result.stdout.strip()))
             return str(result.stdout.strip())
         else:
-            cmd=["cd",self.config_dir,"&&","wget","git.io/trans","&&","chmod","+x","./trans"]
+            cmd=f"cd {self.config_dir} && wget git.io/trans && chmod +x ./trans"
+            os.system(cmd)
+    
             result = subprocess.run(
                 [self.trans_file, f"-b", f":{target}", str(text)],
                 stdout=subprocess.PIPE,
@@ -455,6 +466,59 @@ class FlatpakApp(QWidget):
         with open(self.fav_file, "w") as f:
             json.dump(self.favorites, f)
         #print(f"[DEBUG] Daten gespeichert in: {data_file}")
+
+
+
+    # Ermittlung der Benutzersprache
+    def get_user_language(self):
+        return os.environ.get('LANG', 'en_US')
+
+    def show_about_dialog(self):
+        # Extrahiere die Version aus der Versionsermittlungsfunktion
+        version = self.get_version_info()
+        language = self.get_user_language()
+
+        # Setze den Text je nach Sprache
+        if language.startswith("de"):
+            title = "Über X-Live Flatman"
+            text = (f"X-Live Flatman<br><br>"
+                    f"Autor: F. Maczollek aka VerEnderT <br>"
+                    f"Webseite: <a href='https://github.com/VerEnderT/x-live-flatman'>https://github.com/VerEnderT/x-live-flatman</a><br>"
+                    f"Version: {version}<br><br>"
+                    f"Copyright © 2024 - 2025 VerEnderT<br>"
+                    f"Dies ist freie Software; Sie können es unter den Bedingungen der GNU General Public License Version 3 oder einer späteren Version weitergeben und/oder modifizieren.<br>"
+                    f"Dieses Programm wird in der Hoffnung bereitgestellt, dass es nützlich ist, aber OHNE JEDE GARANTIE; sogar ohne die implizite Garantie der MARKTGÄNGIGKEIT oder EIGNUNG FÜR EINEN BESTIMMTEN ZWECK.<br><br>"
+                    f"Sie sollten eine Kopie der GNU General Public License zusammen mit diesem Programm erhalten haben. Wenn nicht, siehe <a href='https://www.gnu.org/licenses/'>https://www.gnu.org/licenses/</a>.")
+        else:
+            title = "About X-Live Flatman"
+            text = (f"X-Live Flatman<br><br>"
+                    f"Author: F. Maczollek aka VerEnderT<br>"
+                    f"Website: <a href='https://github.com/VerEnderT/x-live-flatman'>https://github.com/VerEnderT/x-live-flatman</a><br>"
+                    f"Version: {version}<br><br>"
+                    f"Copyright © 2024 - 2025 VerEnderT<br>"
+                    f"This is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License Version 3 or any later version.<br>"
+                    f"This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.<br><br>"
+                    f"You should have received a copy of the GNU General Public License along with this program. If not, see <a href='https://www.gnu.org/licenses/'>https://www.gnu.org/licenses/</a>.")
+        
+        # Über Fenster anzeigen
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle(title)
+        msg_box.setTextFormat(Qt.RichText)  # Setze den Textformatierungsmodus auf RichText (HTML)
+        msg_box.setText(text)
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.exec_()
+
+    def get_version_info(self):
+        try:
+            result = subprocess.run(['apt', 'show', 'x-live-flatman'], capture_output=True, text=True)
+            for line in result.stdout.splitlines():
+                if line.startswith('Version:'):
+                    return line.split(':', 1)[1].strip()
+        except Exception as e:
+            print(f"Fehler beim Abrufen der Version: {e}")
+        return "Unbekannt"
+
+
 
 
 

@@ -13,6 +13,17 @@ class MyWidget(QWidget):
     def __init__(self):
         super().__init__()
 
+        config_dir = os.path.expanduser("~/.config/x-live/flatman/")
+        data_file = config_dir+"program_data.json"
+        bak_file = "/usr/share/x-live/flatman/program_data.json"
+        if not os.path.exists(config_dir):
+            os.makedirs(config_dir)
+        if not os.path.exists(data_file):
+            cmd = f"cp {bak_file} {data_file}"
+            os.system(cmd)
+        
+
+
         self.initUI()
 
     def initUI(self):

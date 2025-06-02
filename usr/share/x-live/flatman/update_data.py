@@ -78,7 +78,8 @@ def translate_text(text, source="en", target="de"):
         #print("[debug]",str(result.stdout.strip()))
         return str(result.stdout.strip())
     else:
-        cmd=["cd",config_dir,"&&","wget","git.io/trans","&&","chmod","+x","./trans"]
+        cmd=f"cd {config_dir} && wget git.io/trans && chmod +x ./trans"
+        os.system(cmd)
         result = subprocess.run(
             [trans_file, f"-b", f":{target}", str(text)],
             stdout=subprocess.PIPE,
