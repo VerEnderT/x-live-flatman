@@ -401,7 +401,7 @@ class FlatpakApp(QWidget):
         return str(result.stdout.strip())
 
     def translate_text(self, text, source="en", target="de"):
-        if os.path.exists(trans_file):
+        if os.path.exists(self.trans_file):
             result = subprocess.run(
                 [self.trans_file, f"-b", f":{target}", str(text)],
                 stdout=subprocess.PIPE,
