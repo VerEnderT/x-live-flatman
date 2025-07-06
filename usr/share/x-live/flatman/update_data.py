@@ -65,13 +65,11 @@ def get_flatpak_info(app_id):
             screenshot_url = size.get("src")
         return  screenshot_url, description,app_categories
     
+
     except requests.exceptions.RequestException as e:
-        if e.response.status_code == 404:
-            #print(f"404 - App nicht gefunden: {app_id}")
-            return "", "" , ["none"]
-        else: 
-            #print(f"An error occurred: {e}")
-            return "", "" , ["none"]
+        print(f"404 - App nicht gefunden: {app_id}")
+        return "", "" , ["none"
+
 
 
 def only_icon(app_id):
@@ -93,12 +91,8 @@ def only_icon(app_id):
             download_icon(app_id, icon_url, icons_path)
 
     except requests.exceptions.RequestException as e:
-        if e.response.status_code == 404:
-            #print(f"404 - App nicht gefunden: {app_id}")
-            return "", "" , ["none"]
-        else: 
-            #print(f"An error occurred: {e}")
-            return "", "" , ["none"]
+        print(f"404 - App nicht gefunden: {app_id}")
+        return "", "" , ["none"
 
 
 def download_icon(app_id, url, folder="/tmp/"):
