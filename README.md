@@ -7,3 +7,6 @@ Software Manager für Flatpak Anwendungen / Software Manager for Flatpak applica
 
 ![screenshot](flatman.png)
 
+-----
+
+![screenshot](perm.png)
