@@ -1,14 +1,21 @@
 Package: x-live-flatman
-Version: 0.0.10
-Depends: python3, python3-requests, python3-bs4, python3-pyqt5, appstream, python3-pil, wget
-Maintainer: F.Maczollek aka VerEnderT <chaosz932@gmail.com>
-Architecture: all
-Homepage: https://github.com/VerEnderT/x-live-flatman
+Version: 0.0.11
 Section: utils
 Priority: optional
-Description: Einfacher Gui basierender Flatpak installer 
- Deutsch: ->>
- Einfacher Gui basierender Flatpak installer
- English: ->>
- Simple GUI based Flatpak installer
-
+Architecture: all
+Depends: python3, python3-requests, python3-bs4, python3-pyqt5, appstream, python3-pil, wget
+Maintainer: F. Maczollek aka VerEnderT <chaosz932@gmail.com>
+Homepage: https://verendert.de
+Vcs-Git: https://github.com/VerEnderT/x-live-flatman.git
+Vcs-Browser: https://github.com/VerEnderT/x-live-flatman
+Description: GUI-Tool zur Flatpak-Verwaltung mit Berechtigungssteuerung
+ Flatman ist ein einfaches, grafisches Werkzeug zur Installation und Verwaltung
+ von Flatpak-Anwendungen. Neben der klassischen Paketverwaltung bietet es auch
+ eine integrierte Oberfläche zur Kontrolle von Berechtigungen installierter
+ Anwendungen – vergleichbar mit Flatseal, aber leichtgewichtig und systemnah.
+ English:
+ Flatman is a simple graphical tool to install and manage Flatpak applications.
+ In addition to installation and removal, it offers a built-in permission
+ manager for installed Flatpaks – similar to Flatseal, but lightweight and
+ natively integrated into Debian-based systems.
+ 

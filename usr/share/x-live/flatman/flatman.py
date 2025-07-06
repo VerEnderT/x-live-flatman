@@ -4,17 +4,23 @@ import os
 import json
 import requests
 import subprocess
+import flatperm
+import themecolor
 import re
 from bs4 import BeautifulSoup
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox, QLineEdit
-from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox, QLineEdit, QAction, QMenu, QMenuBar
+from PyQt5.QtGui import QPixmap, QIcon, QPixmap
 from PyQt5.QtCore import Qt, QProcess, QSize
 import tempfile
 from PIL import Image
 
 
+# Pfad zum Arbeitsverzeichnis festlegen
+#arbeitsverzeichnis = os.path.expanduser('/usr/share/x-live/flatman/')
+#os.chdir(arbeitsverzeichnis)
 
-class FlatpakApp(QWidget):
+
+class FlatpakApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.reload = False
@@ -24,7 +30,19 @@ class FlatpakApp(QWidget):
         # Setze LC_ALL auf C
         self.env["LC_ALL"] = "C"
 
+        self.bcolor, self.color = themecolor.theme_color()
+        print(self.bcolor, self.color)
+
+        if self.bcolor == None or self.color == None:
+            self.bcolor = "0d0d0d"
+            self.color = "eeeeec"
+        else:
+            self.bcolor = self.bcolor.replace("#","")
+            self.color = self.color.replace("#","")
+
+
         self.config_dir = os.path.expanduser("~/.config/x-live/flatman/")
+        self.icons_dir = os.path.expanduser("~/.config/x-live/flatman/icons/")
         self.data_file = self.config_dir + "program_data.json"
         self.fav_file = self.config_dir + "favorites.json"
         self.trans_file = self.config_dir + "trans"
@@ -32,14 +50,14 @@ class FlatpakApp(QWidget):
             os.makedirs(self.config_dir)
         self.program_data = {}  # Speichert die Kategorie, URL und Details der Programme
         
-        self.categories_ordered = ["Favoriten","Spiele","Büro","Grafik","AudioVideo","Zubehör","Internet","Bildung","Wissenschaft","Entwicklung","System","Andere","Installiert"]  # Geordnete Liste der Kategorien
+        self.categories_ordered = ["Favoriten","Spiele","Büro","Grafik","AudioVideo","Zubehör","Internet","Bildung","Wissenschaft","Entwicklung","System","Andere","Alle","Installiert"]  # Geordnete Liste der Kategorien
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle("X-Live FlatMan")
-        self.setGeometry(200, 20, 840, 600)
+        self.setGeometry(200, 20, 950, 600)
         self.setWindowIcon(QIcon("/usr/share/pixmaps/x-live-flatman.png"))
-        lwidth = 200
+        lwidth = 232
         self.lwidth = lwidth
         desheight = 200
         catheight = 100
@@ -49,26 +67,63 @@ class FlatpakApp(QWidget):
         
         self.last_item = None
         self.process = None
-        layout = QHBoxLayout()
+        
+        
+        
+        # Menübar erstellen
+        menubar = QMenuBar()
+        menubar.setFixedWidth(50)
+
+        # Menü hinzufügen
+        menu_menu = menubar.addMenu("")
+        menu_menu.setIcon(QIcon("/usr/share/x-live/flatman/icons/menu.png"))
+
+        # Aktionen für das Menü - Berechtigungen
+        permissions_action = QAction("Berechtigungen", self)
+        permissions_action.setIcon(QIcon("/usr/share/x-live/flatman/icons/perm_icon.png"))
+        permissions_action.triggered.connect(self.loadPermissions)
+        
+
+        # Aktionen für das Menü - Daten aktuallisieren
+        refresh_action = QAction("Daten Aktuallisieren", self)
+        refresh_action.setIcon(QIcon("/usr/share/x-live/flatman/icons/update.png"))
+        refresh_action.triggered.connect(self.loadCategories)
+        
+
+        # Aktionen für das Menü - über 
+        about_action = QAction("über", self)
+        about_action.setIcon(QIcon("/usr/share/x-live/flatman/icons/about.png"))
+        about_action.triggered.connect(self.show_about_dialog)
+        
+        # Aktionen zu den Menüs hinzufügen
+        menu_menu.addAction(refresh_action)
+        menu_menu.addAction(about_action)
+        menu_menu.addAction(permissions_action)
+        
+        
+        self.layout = QHBoxLayout()
         self.leftLayout = QVBoxLayout()
-        self.rightLayout = QVBoxLayout()
+        self.infoLayout = QHBoxLayout()
+        self.dataLayout = QVBoxLayout()
+        self.permlayout = QVBoxLayout()
         self.buttonLayout = QHBoxLayout()
+        self.rightLayout = QVBoxLayout()
         self.rightLayout.addLayout(self.buttonLayout)
+        self.buttonLayout.addWidget(menubar)
 
-        self.categoryLabel = QLabel("Kategorien:")
-        self.categoryLabel.setFixedWidth(lwidth)
-
-        self.leftLayout.addWidget(self.categoryLabel)
+        # Suchleiste
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Apps filtern...")
+        self.search_input.textChanged.connect(self.filter_list)
+        self.search_input.setFixedWidth(lwidth)
+        self.leftLayout.addWidget(self.search_input)
+        
 
         self.categoryList = QComboBox()
         self.categoryList.setFixedWidth(lwidth)
         self.categoryList.setFocusPolicy(Qt.NoFocus)
         self.categoryList.currentIndexChanged.connect(self.loadPrograms)
         self.leftLayout.addWidget(self.categoryList)
-
-        self.programLabel = QLabel("Programme:")
-        self.programLabel.setFixedWidth(lwidth)
-        self.leftLayout.addWidget(self.programLabel)
 
         self.programList = QListWidget()
         self.programList.currentItemChanged.connect(self.onProgramClicked)
@@ -78,23 +133,20 @@ class FlatpakApp(QWidget):
         self.programList.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.programList.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-
-        self.loadButton = QPushButton("Daten aktualisieren")
-        self.loadButton.setFixedWidth(lwidth-30)
-        self.loadButton.clicked.connect(self.loadCategories)
-
-        self.aboutButton = QPushButton("")
-        self.aboutButton.setIcon(QIcon("/usr/share/x-live/flatman/about.png"))
-        self.aboutButton.setFixedWidth(40)
-        self.aboutButton.clicked.connect(self.show_about_dialog)
-
-        self.update_about_layout = QHBoxLayout()
-        self.update_about_layout.addWidget(self.aboutButton)
-        self.update_about_layout.addWidget(self.loadButton)
-        self.leftLayout.addLayout(self.update_about_layout)
-
         self.rightPanel = QWidget()
-        self.rightLayout.addWidget(self.rightPanel)
+        self.dataLayout.addWidget(self.rightPanel)
+
+        #icon_path=f"{self.icons_dir}{app_id}.png"
+            # Icon-Label
+        #if not os.path.exists(icon_path):
+        icon_path="/usr/share/x-live/flatman/icons/no_screenshot.png"
+
+        self.icon_label = QLabel()
+        pixmap = QPixmap(icon_path).scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.icon_label.setPixmap(pixmap)
+        self.icon_label.setFixedSize(64,64)
+
+        self.buttonLayout.addWidget(self.icon_label)
 
         self.nameLabel = QLabel("Name:")
         self.buttonLayout.addWidget(self.nameLabel)
@@ -102,20 +154,20 @@ class FlatpakApp(QWidget):
         self.nameLabel.setStyleSheet("font-size: 24px;")
         
         self.statusLabel = QLabel("")
-        self.rightLayout.addWidget(self.statusLabel)
+        self.dataLayout.addWidget(self.statusLabel)
         self.statusLabel.setFixedSize(statuswidth,statusheight)
-
-        # Suchleiste
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Apps filtern...")
-        self.search_input.textChanged.connect(self.filter_list)
-        self.buttonLayout.addWidget(self.search_input)
-        
         
         self.installButton = QPushButton("Installieren")
         self.buttonLayout.addWidget(self.installButton)
         self.installButton.clicked.connect(self.install_start)
         self.installButton.setStyleSheet(""" QPushButton {background: green;color: white;} QPushButton:disabled {background: gray;color: light_gray;}""")
+
+        self.permButton = QPushButton("Berechtigungen")
+        self.buttonLayout.addWidget(self.permButton)
+        self.permButton.clicked.connect(self.loadPermissions)
+        self.permButton.setIcon(QIcon("/usr/share/x-live/flatman/perm_icon.png"))
+        
+        self.permButton.setStyleSheet(""" QPushButton {background: grey;color: white;}""")
         
         self.startButton = QPushButton("Starten")
         self.buttonLayout.addWidget(self.startButton)
@@ -143,30 +195,45 @@ class FlatpakApp(QWidget):
         self.screenshotContainer.setLayout(self.screenshotLayout)
         self.screenshotArea.setWidget(self.screenshotContainer)
         self.screenshotArea.setWidgetResizable(True)
-        self.rightLayout.addWidget(self.screenshotArea)
+        self.dataLayout.addWidget(self.screenshotArea)
         self.screenshotlabel = QLabel()
         self.screenshotLayout.addStretch(0)
         self.screenshotLayout.addWidget(self.screenshotlabel)
         self.screenshotLayout.addStretch(0)
 
         self.descriptionLabel = QLabel("Beschreibung:")
-        self.rightLayout.addWidget(self.descriptionLabel)
+        self.dataLayout.addWidget(self.descriptionLabel)
 
-        self.descriptionText = QTextEdit()
-        self.descriptionText.setReadOnly(True)
-        self.descriptionText.setFixedHeight(desheight)
-        self.rightLayout.addWidget(self.descriptionText)
-
+        self.descriptionText = QLabel()
+        self.descriptionText.setWordWrap(True)           # ⚡️ Textumbruch
+        self.dataLayout.addWidget(self.descriptionText)
 
 
-        layout.addLayout(self.leftLayout)
-        layout.addLayout(self.rightLayout)
 
-        self.setLayout(layout)
+        self.layout.addLayout(self.leftLayout)
+
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scrollWidget = QWidget()
+        self.scrollWidget.setLayout(self.dataLayout)
+        self.scroll.setWidget(self.scrollWidget)
+
+        self.infoLayout.addLayout(self.permlayout)
+        self.infoLayout.addWidget(self.scroll)
+        self.rightLayout.addLayout(self.infoLayout)
+
+        self.layout.addLayout(self.rightLayout)
+        #self.dataLayout.addLayout(self.permlayout)
+
+        self.central_widget= QWidget(self)
+        
+        self.central_widget.setLayout(self.layout)
+        self.setCentralWidget(self.central_widget)
         self.background_color()
-        #self.show()
         self.loadSavedFavorites()
         self.loadSavedData()
+        
+        
 
     def loadSavedData(self):
         if os.path.exists(self.data_file):
@@ -176,6 +243,7 @@ class FlatpakApp(QWidget):
             #print("lädt daten")
             #print(f"data: {self.categories_ordered}")
                 self.displayCategories()
+                self.all_apps = sorted([app_name for app_name, data in self.program_data.items()])
 
             except Exception as e:
                 self.loadCategories()
@@ -187,7 +255,7 @@ class FlatpakApp(QWidget):
             with open(self.fav_file, "r") as f:
                 self.favorites = json.load(f)
         else:
-            self.favorites=["VLC","0 A.D.","ONLYOFFICE Desktop Editors","Hedgewars","Brave"]
+            self.favorites=["VLC","0 A.D.","ONLYOFFICE Desktop Editors","Hedgewars","Brave","SuperTuxKart","OBS Studio","Heroic","Steam","RetroDECK"]
 
     def loadCategories(self):
         self.hide()
@@ -214,6 +282,8 @@ class FlatpakApp(QWidget):
         # Programme alphabetisch sortieren
         if category == "Installiert":
             sorted_programs = self.loadInstalled()
+        elif category == "Alle":
+            sorted_programs = self.all_apps
         elif category == "Favoriten":
             sorted_programs = sorted(self.favorites)
         else:
@@ -224,6 +294,7 @@ class FlatpakApp(QWidget):
 
         for app_name in sorted_programs:
             beschreibung = self.program_data.get(app_name, {}).get("short-desc", "")
+            app_id = self.program_data.get(app_name, {}).get("id")
             tooltip = beschreibung
             if beschreibung and len(beschreibung) > 50:
                 beschreibung = beschreibung[:50].rstrip() + " …"
@@ -237,6 +308,7 @@ class FlatpakApp(QWidget):
             </div>
             """
 
+            """
             # Widget mit QLabel (HTML)
             widget = QWidget()
             layout = QVBoxLayout()
@@ -248,6 +320,8 @@ class FlatpakApp(QWidget):
             label.setTextFormat(Qt.RichText)
             label.setWordWrap(True)
             label.setToolTip(tooltip)
+            pixmap = QPixmap("/usr/share/x-live/flatman/perm_icon.png").scaled(32, 32)  # Pfad zum Icon oder Bild
+            label.setPixmap(pixmap)
 
             layout.addWidget(label)
             widget.setLayout(layout)
@@ -258,10 +332,58 @@ class FlatpakApp(QWidget):
             item.setSizeHint(QSize(int(self.lwidth*0.9),int(widget.sizeHint().height()*1.2)))
 
             item.setData(Qt.UserRole, app_name)  # Speichert Programmnamen "unsichtbar" im Item
+            """
+
+            widget = QWidget()
+            layout = QHBoxLayout()
+            layout.setContentsMargins(1, 1, 1, 1)
+            layout.setSpacing(0)
+            icon_path=f"{self.icons_dir}{app_id}.png"
+            # Icon-Label
+
+            if not os.path.exists(icon_path):
+                icon_path="/usr/share/x-live/flatman/icons/no_screenshot.png"
+
+            icon_label = QLabel()
+            pixmap = QPixmap(icon_path).scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            icon_label.setPixmap(pixmap)
+            icon_label.setFixedSize(32,32)
+
+            # Text-Label
+            text_label = QLabel()
+            text_label.setText(html)
+            text_label.setTextFormat(Qt.RichText)
+            text_label.setWordWrap(True)
+            text_label.setToolTip(tooltip)
+
+            layout.addWidget(icon_label)
+            layout.addWidget(text_label)
+            widget.setLayout(layout)
+            widget.setFixedWidth(self.lwidth-5)
+
+            item = QListWidgetItem()
+            self.programList.addItem(item)
+            self.programList.setItemWidget(item, widget)
+            item.setSizeHint(widget.sizeHint())
+            item.setData(Qt.UserRole, app_name)
+            
 
 
         if self.programList.count() > 0:
+            self.favButton.setEnabled(True)
             self.programList.setCurrentRow(0)
+        else:
+            pixmap = QPixmap("/usr/share/x-live/flatman/icons/no_screenshot.png")
+            self.screenshotlabel.setPixmap(pixmap.scaled(600, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
+            self.uninstallButton.setEnabled(False)
+            self.installButton.setEnabled(False)
+            self.startButton.hide()
+            self.favButton.setEnabled(False)
+            self.descriptionLabel.setText("Es befinden sich in der Kategorie keine Apps !")
+            #description1 = self.translate_text(description)
+            self.descriptionText.setText("")
+            self.nameLabel.setText(f"Keine Apps vorhanden")
 
 
     def loadInstalled(self):
@@ -285,8 +407,56 @@ class FlatpakApp(QWidget):
 
         except Exception as e:
             return []
+
+    def loadAll(self):
+        try:
+            result = subprocess.run(
+                ["flatpak", "remote-ls", "--app", "--columns=name"],
+                capture_output=True,
+                env = self.env,
+                text=True,  # Dekodiert die Ausgabe als String
+                check=True  # Wirft eine CalledProcessError, wenn der Befehl fehlschlägt
+            )
+            output = result.stdout.split("\n")
+            #print(f"[Debug] {output}")
+
+            installed_apps= []
+            for line in output:
+                if line.strip() != "":
+                    #print(line)
+                    installed_apps.append(line.strip())
+            return sorted(installed_apps, key=str.lower)
+
+        except Exception as e:
+            return []
             
+    def loadPermissions(self):
+        if self.scroll.isVisible():
+
+            self.perm_widget = None
+            self.clearLayout(self.permlayout)
+            app_name = self.last_item.data(Qt.UserRole)
+            app_id = self.program_data.get(app_name, {}).get("id")
+            self.perm_widget=flatperm.FlatPerm(app_id)
+            #self.descriptionText.hide()
+            #self.descriptionLabel.hide()
+            #self.screenshotArea.hide()
+            self.scroll.hide()
+            #self.infoLayout.addWidget(self.scroll)
+            self.permlayout.addWidget(self.perm_widget)
+        else:
+            self.scroll.show()
+            self.clearLayout(self.permlayout) 
+        
+
     def onProgramClicked(self, item):
+        self.scroll.verticalScrollBar().setValue(0)  # Scrollt ganz nach oben
+
+        self.scroll.show()
+        self.clearLayout(self.permlayout) 
+        self.descriptionText.show()
+        self.descriptionLabel.show()
+        self.screenshotArea.show()     
         if not self.reload:
             self.statusLabel.setText("")
             self.statusLabel.setStyleSheet("")
@@ -310,7 +480,7 @@ class FlatpakApp(QWidget):
             widget = self.programList.itemWidget(item)
             if widget:
                 if item == current_item:
-                    widget.setStyleSheet("border: 1px solid #0078d7; border-radius: 5px; padding: 2px;")
+                    widget.setStyleSheet("QWidget:{border: 1px solid #0078d7; border-radius: 5px; padding: 2px;} QLabel{border: none;}")
                 else:
                     widget.setStyleSheet("border: none; padding: 2px;")
 
@@ -327,6 +497,16 @@ class FlatpakApp(QWidget):
 
     def displayProgramDetails(self, app_id, app_name):
         self.app_id = app_id
+
+        icon_path=f"{self.icons_dir}{app_id}.png"
+            # Icon-Label
+        if not os.path.exists(icon_path):
+            icon_path="/usr/share/x-live/flatman/icons/no_screenshot.png"
+
+        pixmap = QPixmap(icon_path).scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.icon_label.setPixmap(pixmap)
+        self.icon_label.setFixedSize(64,64)
+
         if app_name in self.favorites:
             self.favButton.setStyleSheet(""" QPushButton {background: green;color: white;font-size: 26px;} QPushButton:disabled {background: gray;color: light_gray;}""")
             self.favButton.setToolTip("aus Favoriten entfernen")
@@ -361,7 +541,7 @@ class FlatpakApp(QWidget):
 
         except Exception as e:
             print(f"[ERROR] Fehler beim Abrufen des Thumbnails: {e}")
-            pixmap = QPixmap("/usr/share/x-live/flatman/no_screenshot.png")
+            pixmap = QPixmap("/usr/share/x-live/flatman/icons/no_screenshot.png")
             self.screenshotlabel.setPixmap(pixmap.scaled(600, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
         try:
@@ -372,10 +552,13 @@ class FlatpakApp(QWidget):
             for line in lines:
                 self.installed.append(line.split("\t")[1])
             if app_id in self.installed:
+                self.permButton.show()
                 self.uninstallButton.show()
                 self.startButton.show()
                 self.installButton.hide()
+                
             else:
+                self.permButton.hide()
                 self.uninstallButton.hide()
                 self.startButton.hide()
                 self.installButton.show()
@@ -389,7 +572,8 @@ class FlatpakApp(QWidget):
         except Exception as e:
             print(f"[ERROR] Fehler beim Abrufen der Programmdetails-hier: {e}")
             self.descriptionText.setText("")
-
+        
+            
 
     def translate_text_old(self, text, source="en", target="de"):
         result = subprocess.run(
@@ -590,7 +774,7 @@ class FlatpakApp(QWidget):
     def install_start(self):
         self.programList.setEnabled(False)
         self.categoryList.setEnabled(False)
-        self.loadButton.setEnabled(False)
+        #self.loadButton.setEnabled(False)
         self.startButton.setEnabled(False)
         self.uninstallButton.setEnabled(False)
         self.installButton.setEnabled(False)
@@ -600,7 +784,7 @@ class FlatpakApp(QWidget):
     def uninstall_start(self):
         self.programList.setEnabled(False)
         self.categoryList.setEnabled(False)
-        self.loadButton.setEnabled(False)
+        #self.loadButton.setEnabled(False)
         self.uninstallButton.setEnabled(False)
         self.installButton.setEnabled(False)
         self.startButton.setEnabled(False)
@@ -609,7 +793,7 @@ class FlatpakApp(QWidget):
     def un_install_finished(self):
         self.programList.setEnabled(True)
         self.categoryList.setEnabled(True)
-        self.loadButton.setEnabled(True)  
+        #self.loadButton.setEnabled(True)  
         self.startButton.setEnabled(True)  
         self.process = None  
         self.reload = True

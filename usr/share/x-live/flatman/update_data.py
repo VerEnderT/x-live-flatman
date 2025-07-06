@@ -13,10 +13,12 @@ def loadSavedData():
         with open(data_file, "r") as f:
             program_data = json.load(f)
         return program_data
-    else:
+    elif os.path.exists(bak_file):
         with open(bak_file, "r") as f:
             program_data = json.load(f)
         return program_data
+    else:
+        return {}
 
 def check_category(app_categories):
     categories = [
@@ -52,7 +54,10 @@ def get_flatpak_info(app_id):
         description = data.get("description", [])
         screenshots = data.get("screenshots", [])
         app_categories = data.get("categories", [])
-        
+        icon_url = data.get("icon", [])[0]
+        if icon_url:
+            download_icon(app_id, icon_url, icons_path)
+
         screenshot_url = ""
         if screenshots:
             screenshot = screenshots[0]
@@ -67,6 +72,46 @@ def get_flatpak_info(app_id):
         else: 
             #print(f"An error occurred: {e}")
             return "", "" , ["none"]
+
+
+def only_icon(app_id):
+    url = f"https://flathub.org/api/v2/appstream/{app_id}"
+    
+    try:
+        # HTTP GET request
+        response = requests.get(url)
+        response.raise_for_status()  # Raises an exception for HTTP errors
+        
+        # Parse the JSON response
+        data = response.json()
+        #print(f"[debug] {data}")
+
+        # Extract description and screenshots
+        icon_url = data.get("icon", [])
+        print(icon_url)
+        if icon_url:
+            download_icon(app_id, icon_url, icons_path)
+
+    except requests.exceptions.RequestException as e:
+        if e.response.status_code == 404:
+            #print(f"404 - App nicht gefunden: {app_id}")
+            return "", "" , ["none"]
+        else: 
+            #print(f"An error occurred: {e}")
+            return "", "" , ["none"]
+
+
+def download_icon(app_id, url, folder="/tmp/"):
+    os.makedirs(folder, exist_ok=True)
+    icon_path = os.path.join(folder, f"{app_id}.png")
+    if not os.path.exists(icon_path):
+        r = requests.get(url)
+        if r.status_code == 200:
+            with open(icon_path, "wb") as f:
+                f.write(r.content)
+            print(f"Icon für {app_id} gespeichert.")
+    return icon_path
+
 
 def translate_text(text, source="en", target="de"):
     if os.path.exists(trans_file):
@@ -129,7 +174,7 @@ def get_all_apps():
         return None
 
 ## Hauptprogramm
-
+icons_path = os.path.expanduser("~/.config/x-live/flatman/icons/")
 raw_path = "~/.config/x-live/flatman/program_data.json"
 data_file = os.path.expanduser(raw_path)
 bak_file = "/usr/share/x-live/flatman/program_data.json"
@@ -168,6 +213,7 @@ for x,app in enumerate(app_ids):
     app_version = app_versions[x].strip()
     app_size = app_sizes[x].strip()
     app_short_desc = app_desc_shorts[x].strip()
+    icon_path = os.path.join(icons_path, f"{app_id}.png")
 
 
     if program_data.get(app_name, {}).get("id") == None:
@@ -188,6 +234,8 @@ for x,app in enumerate(app_ids):
             }
             #cmd_name = f"echo !!! {app_name} datenbank hinzugefügt !!!"
             #os.system(cmd_name)
+    elif not os.path.exists(icon_path):
+        only_icon(app_id)
 
     count_cmd = f"echo Daten zu {pro}% aktuallisiert {x+1}/{len(app_ids)+1} Apps erfasst !! {zaehler} Apps hinzugefügt "
     os.system(count_cmd)
