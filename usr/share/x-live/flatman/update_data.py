@@ -68,13 +68,10 @@ def get_flatpak_info(app_id):
 
     except requests.exceptions.RequestException as e:
         print(f"404 - App nicht gefunden: {app_id}")
-        return "", "" , ["none"
-
-
+        return "", "" , ["none"]
 
 def only_icon(app_id):
-    url = f"https://flathub.org/api/v2/appstream/{app_id}"
-    
+    url = f"https://flathub.org/api/v2/appstream/{app_id}"    
     try:
         # HTTP GET request
         response = requests.get(url)
@@ -92,7 +89,7 @@ def only_icon(app_id):
 
     except requests.exceptions.RequestException as e:
         print(f"404 - App nicht gefunden: {app_id}")
-        return "", "" , ["none"
+        return "", "" , ["none"]
 
 
 def download_icon(app_id, url, folder="/tmp/"):
