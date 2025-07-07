@@ -82,7 +82,7 @@ def only_icon(app_id):
         #print(f"[debug] {data}")
 
         # Extract description and screenshots
-        icon_url = data.get("icon", []
+        icon_url = data.get("icon", [])
         if icon_url:
             download_icon(app_id, icon_url, icons_path)
 
@@ -212,7 +212,7 @@ for x,app in enumerate(app_ids):
         thumbnail, description_en, app_categories = get_flatpak_info(app_id)
         checked_cat = check_category(app_categories)
         category_name = names[checked_cat]
-        if app_categories != ["none"]
+        if app_categories != ["none"]:
             zaehler = zaehler + 1
             zaehler_icon = zaehler_icon + 1
             program_data[app_name] = {
@@ -230,7 +230,7 @@ for x,app in enumerate(app_ids):
         zaehler_icon = zaehler_icon + 1
         only_icon(app_id)
 
-    count_cmd = f"echo Daten zu {pro}% aktuallisiert {x+1}/{len(app_ids)+1} Apps erfasst !! {zaehler} Apps + {zaehler_icon} Icons hinzugefügt "
+    count_cmd = f"echo {pro}% aktuallisiert {x+1}/{len(app_ids)+1} Apps erfasst !! {zaehler} Apps + {zaehler_icon} Icons hinzugefügt "
     os.system(count_cmd)
 
 output_dir = os.path.dirname(data_file)
