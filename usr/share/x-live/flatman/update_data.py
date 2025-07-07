@@ -54,7 +54,7 @@ def get_flatpak_info(app_id):
         description = data.get("description", [])
         screenshots = data.get("screenshots", [])
         app_categories = data.get("categories", [])
-        icon_url = data.get("icon", [])[0]
+        icon_url = data.get("icon", [])
         if icon_url:
             download_icon(app_id, icon_url, icons_path)
 
@@ -67,7 +67,7 @@ def get_flatpak_info(app_id):
     
 
     except requests.exceptions.RequestException as e:
-        print(f"404 - App nicht gefunden: {app_id}")
+        #print(f"404 - App nicht gefunden: {app_id}")
         return "", "" , ["none"]
 
 def only_icon(app_id):
@@ -82,13 +82,12 @@ def only_icon(app_id):
         #print(f"[debug] {data}")
 
         # Extract description and screenshots
-        icon_url = data.get("icon", [])
-        print(icon_url)
+        icon_url = data.get("icon", []
         if icon_url:
             download_icon(app_id, icon_url, icons_path)
 
     except requests.exceptions.RequestException as e:
-        print(f"404 - App nicht gefunden: {app_id}")
+        #print(f"404 - App nicht gefunden: {app_id}")
         return "", "" , ["none"]
 
 
@@ -100,7 +99,7 @@ def download_icon(app_id, url, folder="/tmp/"):
         if r.status_code == 200:
             with open(icon_path, "wb") as f:
                 f.write(r.content)
-            print(f"Icon für {app_id} gespeichert.")
+            #print(f"Icon für {app_id} gespeichert.")
     return icon_path
 
 
@@ -194,6 +193,7 @@ names = {
 
 #program_data = {}
 zaehler = 0
+zaehler_icon = 0
 app_ids, app_names, app_versions, app_sizes, app_desc_shorts = get_all_apps()
 count_cmd = f"echo Daten zu 0% aktuallisiert 0 Apps erfasst !!"
 os.system(count_cmd)
@@ -212,8 +212,9 @@ for x,app in enumerate(app_ids):
         thumbnail, description_en, app_categories = get_flatpak_info(app_id)
         checked_cat = check_category(app_categories)
         category_name = names[checked_cat]
-        if app_categories != ["none"]:
+        if app_categories != ["none"]
             zaehler = zaehler + 1
+            zaehler_icon = zaehler_icon + 1
             program_data[app_name] = {
                 "category": category_name,
                 "id": app_id,
@@ -226,9 +227,10 @@ for x,app in enumerate(app_ids):
             #cmd_name = f"echo !!! {app_name} datenbank hinzugefügt !!!"
             #os.system(cmd_name)
     elif not os.path.exists(icon_path):
+        zaehler_icon = zaehler_icon + 1
         only_icon(app_id)
 
-    count_cmd = f"echo Daten zu {pro}% aktuallisiert {x+1}/{len(app_ids)+1} Apps erfasst !! {zaehler} Apps hinzugefügt "
+    count_cmd = f"echo Daten zu {pro}% aktuallisiert {x+1}/{len(app_ids)+1} Apps erfasst !! {zaehler} Apps + {zaehler_icon} Icons hinzugefügt "
     os.system(count_cmd)
 
 output_dir = os.path.dirname(data_file)

@@ -3,7 +3,7 @@ Version: 0.0.11
 Section: utils
 Priority: optional
 Architecture: all
-Depends: python3, python3-requests, python3-bs4, python3-pyqt5, appstream, python3-pil, wget
+Depends: python3, python3-requests, python3-bs4, python3-pyqt5, appstream, python3-pil, wget, gawk
 Maintainer: F. Maczollek aka VerEnderT <chaosz932@gmail.com>
 Homepage: https://verendert.de
 Vcs-Git: https://github.com/VerEnderT/x-live-flatman.git
