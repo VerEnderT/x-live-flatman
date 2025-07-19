@@ -6,6 +6,8 @@ import requests
 import subprocess
 import flatperm
 import themecolor
+import about
+import x_app_updates
 import re
 from bs4 import BeautifulSoup
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox, QLineEdit, QAction, QMenu, QMenuBar
@@ -31,7 +33,7 @@ class FlatpakApp(QMainWindow):
         self.env["LC_ALL"] = "C"
 
         self.bcolor, self.color = themecolor.theme_color()
-        print(self.bcolor, self.color)
+        #print(self.bcolor, self.color)
 
         if self.bcolor == None or self.color == None:
             self.bcolor = "0d0d0d"
@@ -43,6 +45,7 @@ class FlatpakApp(QMainWindow):
 
         self.config_dir = os.path.expanduser("~/.config/x-live/flatman/")
         self.icons_dir = os.path.expanduser("~/.config/x-live/flatman/icons/")
+        self.thumbnails_dir = os.path.expanduser("~/.config/x-live/flatman/thumbnails/")
         self.data_file = self.config_dir + "program_data.json"
         self.fav_file = self.config_dir + "favorites.json"
         self.trans_file = self.config_dir + "trans"
@@ -54,16 +57,19 @@ class FlatpakApp(QMainWindow):
         self.initUI()
 
     def initUI(self):
+        self.faktor = app.desktop().height()/1000
+        #self.faktor = 1.7
         self.setWindowTitle("X-Live FlatMan")
-        self.setGeometry(200, 20, 950, 600)
+        self.setGeometry(200, 20, int(950*(self.faktor+0.3)), int(600*self.faktor))
         self.setWindowIcon(QIcon("/usr/share/pixmaps/x-live-flatman.png"))
-        lwidth = 232
+        lwidth = int(232*self.faktor)
         self.lwidth = lwidth
-        desheight = 200
-        catheight = 100
-        sshotheight = 320
-        statuswidth= 620
-        statusheight= 15
+        desheight = int(200*self.faktor)
+        catheight = int(100*self.faktor)
+        sshotheight = int(320*self.faktor)
+        statuswidth= int(620*self.faktor)
+        statusheight= int(25*self.faktor)
+        buttonheight= int(24*self.faktor)
         
         self.last_item = None
         self.process = None
@@ -72,7 +78,8 @@ class FlatpakApp(QMainWindow):
         
         # Menübar erstellen
         menubar = QMenuBar()
-        menubar.setFixedWidth(50)
+        menubar.setStyleSheet(f"font-size: {str(int(14*self.faktor))}px;")
+        menubar.setFixedSize(buttonheight,buttonheight)
 
         # Menü hinzufügen
         menu_menu = menubar.addMenu("")
@@ -82,10 +89,11 @@ class FlatpakApp(QMainWindow):
         permissions_action = QAction("Berechtigungen", self)
         permissions_action.setIcon(QIcon("/usr/share/x-live/flatman/icons/perm_icon.png"))
         permissions_action.triggered.connect(self.loadPermissions)
+        #permissions_action.setStyleSheet(f"font-size: {str(int(24*self.faktor))}px;")
         
 
         # Aktionen für das Menü - Daten aktuallisieren
-        refresh_action = QAction("Daten Aktuallisieren", self)
+        refresh_action = QAction("APP-Datenbank auffrischen", self)
         refresh_action.setIcon(QIcon("/usr/share/x-live/flatman/icons/update.png"))
         refresh_action.triggered.connect(self.loadCategories)
         
@@ -93,12 +101,34 @@ class FlatpakApp(QMainWindow):
         # Aktionen für das Menü - über 
         about_action = QAction("über", self)
         about_action.setIcon(QIcon("/usr/share/x-live/flatman/icons/about.png"))
-        about_action.triggered.connect(self.show_about_dialog)
+        about_action.triggered.connect(lambda: about.show_about_dialog("x-live-flatman","X-Live Flatman"))
+        
+        # Aktionen für das Menü - Flatman Update 
+        update_action = QAction("Flatman Aktuallisieren", self)
+        update_action.setIcon(QIcon("/usr/share/x-live/flatman/icons/update.png"))
+        update_action.triggered.connect(lambda: about.show_about_dialog("x-live-flatman","X-Live Flatman"))
         
         # Aktionen zu den Menüs hinzufügen
+        
+        try:
+            update_check = x_app_updates.update_info("verendert","x-live-flatman")
+            #print(update_check)
+        
+        except Exception as e:
+            print(f"Fehler: {e}")
+            update_check  = {}
+            update_check["update"] = "x"
+
+
+        if update_check["update"] == "u":
+            update_action.setText(f"Flatman auf {update_check['version']} aktuallisieren")
+        if update_check["update"] == "a":
+            update_action.setText(f"Flatman ist aktuell version {update_check['version']}")
+        if update_check["update"] == "x":
+            update_action.setText(f"Flatman konnte nicht auf update prüfen !!")
         menu_menu.addAction(refresh_action)
+        menu_menu.addAction(update_action)
         menu_menu.addAction(about_action)
-        menu_menu.addAction(permissions_action)
         
         
         self.layout = QHBoxLayout()
@@ -114,13 +144,15 @@ class FlatpakApp(QMainWindow):
         # Suchleiste
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Apps filtern...")
+        self.search_input.setStyleSheet(f"font-size: {str(int(14*self.faktor))}px;")
         self.search_input.textChanged.connect(self.filter_list)
-        self.search_input.setFixedWidth(lwidth)
+        self.search_input.setFixedSize(lwidth,buttonheight)
         self.leftLayout.addWidget(self.search_input)
         
 
         self.categoryList = QComboBox()
-        self.categoryList.setFixedWidth(lwidth)
+        self.categoryList.setFixedSize(lwidth,buttonheight)
+        self.categoryList.setStyleSheet(f"font-size: {str(int(14*self.faktor))}px;")
         self.categoryList.setFocusPolicy(Qt.NoFocus)
         self.categoryList.currentIndexChanged.connect(self.loadPrograms)
         self.leftLayout.addWidget(self.categoryList)
@@ -135,23 +167,20 @@ class FlatpakApp(QMainWindow):
 
         self.rightPanel = QWidget()
         self.dataLayout.addWidget(self.rightPanel)
-
-        #icon_path=f"{self.icons_dir}{app_id}.png"
-            # Icon-Label
-        #if not os.path.exists(icon_path):
         icon_path="/usr/share/x-live/flatman/icons/no_screenshot.png"
 
         self.icon_label = QLabel()
-        pixmap = QPixmap(icon_path).scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        
+        pixmap = QPixmap(icon_path).scaled(int(64*self.faktor), int(64*self.faktor), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.icon_label.setPixmap(pixmap)
-        self.icon_label.setFixedSize(64,64)
+        self.icon_label.setFixedSize(int(64*self.faktor), int(64*self.faktor))
 
         self.buttonLayout.addWidget(self.icon_label)
 
         self.nameLabel = QLabel("Name:")
         self.buttonLayout.addWidget(self.nameLabel)
         self.buttonLayout.addStretch()
-        self.nameLabel.setStyleSheet("font-size: 24px;")
+        self.nameLabel.setStyleSheet(f"font-size: {str(int(24*self.faktor))}px;")
         
         self.statusLabel = QLabel("")
         self.dataLayout.addWidget(self.statusLabel)
@@ -159,10 +188,12 @@ class FlatpakApp(QMainWindow):
         
         self.installButton = QPushButton("Installieren")
         self.buttonLayout.addWidget(self.installButton)
+        self.installButton.setFixedHeight(buttonheight)
         self.installButton.clicked.connect(self.install_start)
         self.installButton.setStyleSheet(""" QPushButton {background: green;color: white;} QPushButton:disabled {background: gray;color: light_gray;}""")
 
         self.permButton = QPushButton("Berechtigungen")
+        self.permButton.setFixedHeight(buttonheight)
         self.buttonLayout.addWidget(self.permButton)
         self.permButton.clicked.connect(self.loadPermissions)
         self.permButton.setIcon(QIcon("/usr/share/x-live/flatman/perm_icon.png"))
@@ -171,11 +202,13 @@ class FlatpakApp(QMainWindow):
         
         self.startButton = QPushButton("Starten")
         self.buttonLayout.addWidget(self.startButton)
+        self.startButton.setFixedHeight(buttonheight)
         self.startButton.hide()
         self.startButton.clicked.connect(self.app_start)
         self.startButton.setStyleSheet(""" QPushButton {background: yellow;color: black;} QPushButton:disabled {background: gray;color: light_gray;}""")
         
         self.uninstallButton = QPushButton("Deinstallieren")
+        self.uninstallButton.setFixedHeight(buttonheight)
         self.buttonLayout.addWidget(self.uninstallButton)
         self.uninstallButton.hide()
         self.uninstallButton.clicked.connect(self.uninstall_start)
@@ -183,23 +216,20 @@ class FlatpakApp(QMainWindow):
 
         self.favButton = QPushButton(" ❤ ")
         self.buttonLayout.addWidget(self.favButton)
-        self.favButton.setFixedSize(24,24)
+        self.favButton.setFixedSize(int(24*self.faktor),int(24*self.faktor))
         self.favButton.clicked.connect(self.fav_btn_clicked)
-        self.favButton.setStyleSheet(""" QPushButton {background: grey;color: white;font-size: 26px;} QPushButton:disabled {background: gray;color: light_gray;}""")
+        self.favButton.setStyleSheet(""" QPushButton {background: grey;color: white;font-size: """+str(int(26*self.faktor))+"""px;} QPushButton:disabled {background: gray;color: light_gray;}""")
         self.favButton.setToolTip("zu Favoriten hinzufügen")
 
-        self.screenshotArea = QScrollArea()
-        self.screenshotContainer = QWidget()
-        self.screenshotArea.setFixedHeight(sshotheight)
         self.screenshotLayout = QHBoxLayout()
-        self.screenshotContainer.setLayout(self.screenshotLayout)
-        self.screenshotArea.setWidget(self.screenshotContainer)
-        self.screenshotArea.setWidgetResizable(True)
-        self.dataLayout.addWidget(self.screenshotArea)
         self.screenshotlabel = QLabel()
         self.screenshotLayout.addStretch(0)
         self.screenshotLayout.addWidget(self.screenshotlabel)
         self.screenshotLayout.addStretch(0)
+        self.screenshotlabel.setFixedHeight(sshotheight)
+
+        self.dataLayout.addLayout(self.screenshotLayout)
+        self.dataLayout.addStretch(1)
 
         self.descriptionLabel = QLabel("Beschreibung:")
         self.dataLayout.addWidget(self.descriptionLabel)
@@ -207,8 +237,7 @@ class FlatpakApp(QMainWindow):
         self.descriptionText = QLabel()
         self.descriptionText.setWordWrap(True)           # ⚡️ Textumbruch
         self.dataLayout.addWidget(self.descriptionText)
-
-
+        self.dataLayout.addStretch(2)
 
         self.layout.addLayout(self.leftLayout)
 
@@ -223,7 +252,6 @@ class FlatpakApp(QMainWindow):
         self.rightLayout.addLayout(self.infoLayout)
 
         self.layout.addLayout(self.rightLayout)
-        #self.dataLayout.addLayout(self.permlayout)
 
         self.central_widget= QWidget(self)
         
@@ -236,18 +264,21 @@ class FlatpakApp(QMainWindow):
         
 
     def loadSavedData(self):
+        #print(self.data_file)
         if os.path.exists(self.data_file):
             try:
                 with open(self.data_file, "r") as f:
                     self.program_data = json.load(f)
-            #print("lädt daten")
-            #print(f"data: {self.categories_ordered}")
-                self.displayCategories()
-                self.all_apps = sorted([app_name for app_name, data in self.program_data.items()])
+                    #print("lädt daten")
+                    #print(f"data: {self.categories_ordered}")
+                    self.all_apps = sorted([app_name for app_name, data in self.program_data.items()])
+                    self.displayCategories()
 
             except Exception as e:
+                print(f"fehler 1 {e}")
                 self.loadCategories()
         else:
+            print("fehler 2")
             self.loadCategories()
 
     def loadSavedFavorites(self):
@@ -259,12 +290,15 @@ class FlatpakApp(QMainWindow):
 
     def loadCategories(self):
         self.hide()
+        print("fehler 3")
         os.system("appstreamcli refresh-cache")
         os.system("python3 /usr/share/x-live/flatman/update.py") 
-        self.show()
+        #self.show()
         self.loadSavedData()
 
+
     def displayCategories(self):
+        self.prepare_programmlist()
         self.show()
         self.categoryList.clear()
         for category in self.categories_ordered:
@@ -277,7 +311,6 @@ class FlatpakApp(QMainWindow):
     def loadPrograms(self):
         category = self.categoryList.currentText()
         self.search_input.clear()
-        self.programList.clear()
 
         # Programme alphabetisch sortieren
         if category == "Installiert":
@@ -291,48 +324,32 @@ class FlatpakApp(QMainWindow):
                 app_name for app_name, data in self.program_data.items()
                 if data["category"] == category
             ])
+        self.filter_categorie(sorted_programs)
+
+        return
+
+
+    def prepare_programmlist(self):
+
+        # Programme alphabetisch sortieren
+        sorted_programs = sorted(self.all_apps)
 
         for app_name in sorted_programs:
             beschreibung = self.program_data.get(app_name, {}).get("short-desc", "")
             app_id = self.program_data.get(app_name, {}).get("id")
             tooltip = beschreibung
-            if beschreibung and len(beschreibung) > 50:
+            if beschreibung and len(beschreibung) > 55:
                 beschreibung = beschreibung[:50].rstrip() + " …"
 
 
             # HTML-Text definieren
             html = f"""
             <div>
-                <span style="font-size:14pt; font-weight:bold;">{app_name}</span><br>
-                <span style="font-size:10pt; color:gray;">{beschreibung}</span>
+                <span style="font-size:"""+str(int(14*self.faktor))+f"""pt; font-weight:bold;">{app_name}</span><br>
+                <span style="font-size:"""+str(int(10*self.faktor))+f"""pt; color:gray;">{beschreibung}</span>
             </div>
             """
 
-            """
-            # Widget mit QLabel (HTML)
-            widget = QWidget()
-            layout = QVBoxLayout()
-            layout.setContentsMargins(1, 1, 1, 1)
-
-
-            label = QLabel()
-            label.setText(html)
-            label.setTextFormat(Qt.RichText)
-            label.setWordWrap(True)
-            label.setToolTip(tooltip)
-            pixmap = QPixmap("/usr/share/x-live/flatman/perm_icon.png").scaled(32, 32)  # Pfad zum Icon oder Bild
-            label.setPixmap(pixmap)
-
-            layout.addWidget(label)
-            widget.setLayout(layout)
-
-            item = QListWidgetItem()
-            self.programList.addItem(item)
-            self.programList.setItemWidget(item, widget)
-            item.setSizeHint(QSize(int(self.lwidth*0.9),int(widget.sizeHint().height()*1.2)))
-
-            item.setData(Qt.UserRole, app_name)  # Speichert Programmnamen "unsichtbar" im Item
-            """
 
             widget = QWidget()
             layout = QHBoxLayout()
@@ -345,9 +362,11 @@ class FlatpakApp(QMainWindow):
                 icon_path="/usr/share/x-live/flatman/icons/no_screenshot.png"
 
             icon_label = QLabel()
-            pixmap = QPixmap(icon_path).scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            pixmap = QPixmap(icon_path).scaled(int(32*self.faktor), int(32*self.faktor), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             icon_label.setPixmap(pixmap)
-            icon_label.setFixedSize(32,32)
+            #icon_label.setIcon(QIcon(icon_path))   
+            #icon_label.setIconSize(QSize(int(32*self.faktor), int(32*self.faktor)))      
+            icon_label.setFixedSize(int(42*self.faktor),int(84*self.faktor))
 
             # Text-Label
             text_label = QLabel()
@@ -366,25 +385,6 @@ class FlatpakApp(QMainWindow):
             self.programList.setItemWidget(item, widget)
             item.setSizeHint(widget.sizeHint())
             item.setData(Qt.UserRole, app_name)
-            
-
-
-        if self.programList.count() > 0:
-            self.favButton.setEnabled(True)
-            self.programList.setCurrentRow(0)
-        else:
-            pixmap = QPixmap("/usr/share/x-live/flatman/icons/no_screenshot.png")
-            self.screenshotlabel.setPixmap(pixmap.scaled(600, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-
-            self.uninstallButton.setEnabled(False)
-            self.installButton.setEnabled(False)
-            self.startButton.hide()
-            self.favButton.setEnabled(False)
-            self.descriptionLabel.setText("Es befinden sich in der Kategorie keine Apps !")
-            #description1 = self.translate_text(description)
-            self.descriptionText.setText("")
-            self.nameLabel.setText(f"Keine Apps vorhanden")
-
 
     def loadInstalled(self):
         try:
@@ -437,7 +437,7 @@ class FlatpakApp(QMainWindow):
             self.clearLayout(self.permlayout)
             app_name = self.last_item.data(Qt.UserRole)
             app_id = self.program_data.get(app_name, {}).get("id")
-            self.perm_widget=flatperm.FlatPerm(app_id)
+            self.perm_widget=flatperm.FlatPerm(app_id,self.faktor*1.2)
             #self.descriptionText.hide()
             #self.descriptionLabel.hide()
             #self.screenshotArea.hide()
@@ -456,7 +456,7 @@ class FlatpakApp(QMainWindow):
         self.clearLayout(self.permlayout) 
         self.descriptionText.show()
         self.descriptionLabel.show()
-        self.screenshotArea.show()     
+        self.screenshotlabel.show()     
         if not self.reload:
             self.statusLabel.setText("")
             self.statusLabel.setStyleSheet("")
@@ -480,9 +480,9 @@ class FlatpakApp(QMainWindow):
             widget = self.programList.itemWidget(item)
             if widget:
                 if item == current_item:
-                    widget.setStyleSheet("QWidget:{border: 1px solid #0078d7; border-radius: 5px; padding: 2px;} QLabel{border: none;}")
+                    widget.setStyleSheet("QLabel{background: #30"+self.color+"; border-radius: 0px; padding: 2px;} QLabel:hover {background: #50"+self.color+";}")
                 else:
-                    widget.setStyleSheet("border: none; padding: 2px;")
+                    widget.setStyleSheet("QWidget {border: none; padding: 2px;} QWidget:hover {background: #10aaaaaa;} ")
 
     def get_flatpak_info(self, app_name):
         description = self.program_data.get(app_name, {}).get("description")
@@ -503,46 +503,62 @@ class FlatpakApp(QMainWindow):
         if not os.path.exists(icon_path):
             icon_path="/usr/share/x-live/flatman/icons/no_screenshot.png"
 
-        pixmap = QPixmap(icon_path).scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        pixmap = QPixmap(icon_path).scaled(int(64*self.faktor), int(64*self.faktor), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.icon_label.setPixmap(pixmap)
-        self.icon_label.setFixedSize(64,64)
+        self.icon_label.setFixedSize(int(64*self.faktor), int(64*self.faktor))
 
         if app_name in self.favorites:
-            self.favButton.setStyleSheet(""" QPushButton {background: green;color: white;font-size: 26px;} QPushButton:disabled {background: gray;color: light_gray;}""")
+            self.favButton.setStyleSheet(""" QPushButton {background: green;color: white;font-size: """+str(int(26*self.faktor))+"""px;} QPushButton:disabled {background: gray;color: light_gray;}""")
             self.favButton.setToolTip("aus Favoriten entfernen")
         else:         
-            self.favButton.setStyleSheet(""" QPushButton {background: gray;color: white;font-size: 26px;} QPushButton:disabled {background: gray;color: light_gray;}""")
+            self.favButton.setStyleSheet(""" QPushButton {background: gray;color: white;font-size: """+str(int(26*self.faktor))+"""px;} QPushButton:disabled {background: gray;color: light_gray;}""")
             self.favButton.setToolTip("zu Favoriten hinzufügen")
 
         thumbnail, description, info_version, info_installed = self.get_flatpak_info(app_name)
 
         self.descriptionLabel.setText(f" App-ID: {app_id}\n Version: {info_version}\n Speicherbedarf: {info_installed}\n\nBeschreibung:")
+        self.descriptionLabel.setStyleSheet("""font-size: """+str(int(18*self.faktor))+"""px;""")
 
-        try:
-            # Bild von der URL herunterladen
-            response = requests.get(thumbnail)
-            
-            if response.status_code == 200:
-                # Temporäre Datei für das Bild erstellen
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.webp') as temp_file:
-                    temp_file.write(response.content)
-                    temp_file_path = temp_file.name
 
-                self.convert_image_format(temp_file_path, 'downloaded_image.jpg')  # Konvertiere in JPG
-                pixmap = QPixmap('downloaded_image.jpg')  # Lade das konvertierte Bild
 
-                if pixmap.isNull():
-                    self.screenshotlabel.setText("Fehler beim Laden des WebP-Bildes.")
+        pixmap = QPixmap("/usr/share/x-live/flatman/icons/no_screenshot.png")
+        self.screenshotlabel.setPixmap(pixmap.scaled(int(600*self.faktor), int(300*self.faktor), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        #print("-"+thumbnail+"-")
+        
+        picture_save_path=f"{self.thumbnails_dir}{self.app_id}.jpg"
+        if os.path.exists(picture_save_path):
+            pixmap = QPixmap(picture_save_path)  # Lade das konvertierte Bild
+            self.screenshotlabel.setPixmap(pixmap.scaled(int(600*self.faktor), int(300*self.faktor), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        else:
+            pass
+            try:
+                # Bild von der URL herunterladen
+                response = requests.get(thumbnail, timeout=2)     
+                if response.status_code == 200:
+                    # Temporäre Datei für das Bild erstellen
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.webp') as temp_file:
+                        temp_file.write(response.content)
+                        temp_file_path = temp_file.name
+                    #print("downloaded_here")
+                    picture_save_path=f"{self.thumbnails_dir}{self.app_id}.jpg"
+                    self.convert_image_format(temp_file_path, 'downloaded_image.jpg')
+                    if not os.path.exists(self.thumbnails_dir):
+                        os.makedirs(self.thumbnails_dir)
+                    self.convert_image_format(temp_file_path, picture_save_path)  # Konvertiere in JPG
+                    pixmap = QPixmap('downloaded_image.jpg')  # Lade das konvertierte Bild
+
+                    if pixmap.isNull():
+                        self.screenshotlabel.setText("Fehler beim Laden des WebP-Bildes.")
+                    else:
+                        self.screenshotlabel.setPixmap(pixmap.scaled(int(600*self.faktor), int(300*self.faktor), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
                 else:
-                    self.screenshotlabel.setPixmap(pixmap.scaled(600, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                    self.screenshotlabel.setText("Fehler beim Herunterladen des Bildes.")
 
-            else:
-                self.screenshotlabel.setText("Fehler beim Herunterladen des Bildes.")
-
-        except Exception as e:
-            print(f"[ERROR] Fehler beim Abrufen des Thumbnails: {e}")
-            pixmap = QPixmap("/usr/share/x-live/flatman/icons/no_screenshot.png")
-            self.screenshotlabel.setPixmap(pixmap.scaled(600, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            except Exception as e:
+                print(f"[ERROR] Fehler beim Abrufen des Thumbnails: {e}")
+                pixmap = QPixmap("/usr/share/x-live/flatman/icons/no_screenshot.png")
+                self.screenshotlabel.setPixmap(pixmap.scaled(int(600*self.faktor), int(300*self.faktor), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
         try:
             cmd = "flatpak list --app".split(" ")
@@ -567,6 +583,7 @@ class FlatpakApp(QMainWindow):
             self.installButton.setEnabled(True)
             #description1 = self.translate_text(description)
             self.descriptionText.setText(description)
+            self.descriptionText.setStyleSheet("""font-size: """+str(int(15*self.faktor))+"""px;""")
             self.nameLabel.setText(f"{app_name}")
                    
         except Exception as e:
@@ -574,16 +591,6 @@ class FlatpakApp(QMainWindow):
             self.descriptionText.setText("")
         
             
-
-    def translate_text_old(self, text, source="en", target="de"):
-        result = subprocess.run(
-            [self.trans_file, f"-b", f":{target}", text],
-            stdout=subprocess.PIPE,
-            text=True
-        )
-        #print("[debug]",str(result.stdout.strip()))
-        return str(result.stdout.strip())
-
     def translate_text(self, text, source="en", target="de"):
         if os.path.exists(self.trans_file):
             result = subprocess.run(
@@ -616,6 +623,10 @@ class FlatpakApp(QMainWindow):
     def filter_list(self):
         """ Die Liste der Programme basierend auf der Benutzereingabe filtern """
         filter_text = self.search_input.text().lower()
+        if filter_text == "": 
+            self.loadPrograms()
+            return
+
         for row in range(self.programList.count()):
             item = self.programList.item(row)
             widget = self.programList.itemWidget(item)
@@ -625,6 +636,36 @@ class FlatpakApp(QMainWindow):
                 beschreibung = self.program_data.get(app_name, {}).get("short-desc", "")
                 text = app_name.lower() + " " + beschreibung.lower()
                 item.setHidden(filter_text not in text)
+
+    def filter_categorie(self,filter_text):
+        #print(filter_text)
+        for row in range(self.programList.count()):
+            item = self.programList.item(row)
+            widget = self.programList.itemWidget(item)
+            if widget:
+                # Angenommen, das Widget ist ein QLabel
+                app_name = item.data(Qt.UserRole)
+                item.setHidden(app_name not in filter_text)
+
+        if len(filter_text) == 0:
+            pixmap = QPixmap("/usr/share/x-live/flatman/icons/no_screenshot.png")
+            self.screenshotlabel.setPixmap(pixmap.scaled(int(600*self.faktor), int(300*self.faktor), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
+            self.uninstallButton.setEnabled(False)
+            self.installButton.setEnabled(False)
+            self.startButton.hide()
+            self.favButton.setEnabled(False)
+            self.descriptionLabel.setText("Es befinden sich in der Kategorie keine Apps !")
+            #description1 = self.translate_text(description)
+            self.descriptionText.setText("")
+            self.nameLabel.setText(f"Keine Apps vorhanden")
+        else:
+            self.favButton.setEnabled(True)
+            for i in range(self.programList.count()):
+                item = self.programList.item(i)
+                if not item.isHidden():
+                    self.programList.setCurrentItem(item)
+                    break
 
     def fav_btn_clicked(self):
         app_name = self.last_item.data(Qt.UserRole)
@@ -651,121 +692,15 @@ class FlatpakApp(QMainWindow):
             json.dump(self.favorites, f)
         #print(f"[DEBUG] Daten gespeichert in: {data_file}")
 
-
-
-    # Ermittlung der Benutzersprache
-    def get_user_language(self):
-        return os.environ.get('LANG', 'en_US')
-
-    def show_about_dialog(self):
-        # Extrahiere die Version aus der Versionsermittlungsfunktion
-        version = self.get_version_info()
-        language = self.get_user_language()
-
-        # Setze den Text je nach Sprache
-        if language.startswith("de"):
-            title = "Über X-Live Flatman"
-            text = (f"X-Live Flatman<br><br>"
-                    f"Autor: F. Maczollek aka VerEnderT <br>"
-                    f"Webseite: <a href='https://github.com/VerEnderT/x-live-flatman'>https://github.com/VerEnderT/x-live-flatman</a><br>"
-                    f"Version: {version}<br><br>"
-                    f"Copyright © 2024 - 2025 VerEnderT<br>"
-                    f"Dies ist freie Software; Sie können es unter den Bedingungen der GNU General Public License Version 3 oder einer späteren Version weitergeben und/oder modifizieren.<br>"
-                    f"Dieses Programm wird in der Hoffnung bereitgestellt, dass es nützlich ist, aber OHNE JEDE GARANTIE; sogar ohne die implizite Garantie der MARKTGÄNGIGKEIT oder EIGNUNG FÜR EINEN BESTIMMTEN ZWECK.<br><br>"
-                    f"Sie sollten eine Kopie der GNU General Public License zusammen mit diesem Programm erhalten haben. Wenn nicht, siehe <a href='https://www.gnu.org/licenses/'>https://www.gnu.org/licenses/</a>.")
-        else:
-            title = "About X-Live Flatman"
-            text = (f"X-Live Flatman<br><br>"
-                    f"Author: F. Maczollek aka VerEnderT<br>"
-                    f"Website: <a href='https://github.com/VerEnderT/x-live-flatman'>https://github.com/VerEnderT/x-live-flatman</a><br>"
-                    f"Version: {version}<br><br>"
-                    f"Copyright © 2024 - 2025 VerEnderT<br>"
-                    f"This is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License Version 3 or any later version.<br>"
-                    f"This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.<br><br>"
-                    f"You should have received a copy of the GNU General Public License along with this program. If not, see <a href='https://www.gnu.org/licenses/'>https://www.gnu.org/licenses/</a>.")
-        
-        # Über Fenster anzeigen
-        msg_box = QMessageBox()
-        msg_box.setWindowTitle(title)
-        msg_box.setTextFormat(Qt.RichText)  # Setze den Textformatierungsmodus auf RichText (HTML)
-        msg_box.setText(text)
-        msg_box.setIcon(QMessageBox.Information)
-        msg_box.exec_()
-
-    def get_version_info(self):
-        try:
-            result = subprocess.run(['apt', 'show', 'x-live-flatman'], capture_output=True, text=True)
-            for line in result.stdout.splitlines():
-                if line.startswith('Version:'):
-                    return line.split(':', 1)[1].strip()
-        except Exception as e:
-            print(f"Fehler beim Abrufen der Version: {e}")
-        return "Unbekannt"
-
-
-
-
-
     # Farbprofil abrufen und anwenden
-
-    def get_current_theme(self):
-        try:
-            # Versuche, das Theme mit xfconf-query abzurufen
-            result = subprocess.run(['xfconf-query', '-c', 'xsettings', '-p', '/Net/ThemeName'], capture_output=True, text=True)
-            theme_name = result.stdout.strip()
-            if theme_name:
-                return theme_name
-        except FileNotFoundError:
-            pass
-            #print("xfconf-query nicht gefunden. Versuche gsettings.")
-        except Exception as e:
-            #print(f"Error getting theme with xfconf-query: {e}")
-            pass
-
-        try:
-            # Fallback auf gsettings, falls xfconf-query nicht vorhanden ist
-            result = subprocess.run(['gsettings', 'get', 'org.gnome.desktop.interface', 'gtk-theme'], capture_output=True, text=True)
-            theme_name = result.stdout.strip().strip("'")
-            if theme_name:
-                return theme_name
-        except Exception as e:
-            #print(f"Error getting theme with gsettings: {e}")
-            pass
-
-        return None
-
-    def extract_color_from_css(self,css_file_path, color_name):
-        try:
-            with open(css_file_path, 'r', encoding='utf-8') as file:
-                content = file.read()
-                #print(content)
-                # Muster zum Finden der Farbe
-                pattern = r'{}[\s:]+([#\w]+)'.format(re.escape(color_name))
-                match = re.search(pattern, content)
-                if match:
-                    return match.group(1)
-                return None
-        except IOError as e:
-            #print(f"Error reading file: {e}")
-            return None
                      
     def background_color(self):
-        theme_name = self.get_current_theme()
-        if theme_name:
-            #print(f"Current theme: {theme_name}")
-
-            # Pfad zur GTK-CSS-Datei des aktuellen Themes
-            css_file_path = f'/usr/share/themes/{theme_name}/gtk-3.0/gtk.css'
-            if os.path.exists(css_file_path):
-                bcolor = self.extract_color_from_css(css_file_path, ' background-color')
-                color = self.extract_color_from_css(css_file_path, ' color')
-                self.setStyleSheet(f"background: {bcolor};color: {color}")
-            else:
-                pass                
-                #print(f"CSS file not found: {css_file_path}")
-        else:
-            #print("Unable to determine the current theme.")
-            pass
+        bcolor,color  = themecolor.theme_color()
+        if not bcolor and color:
+            print("default color")
+            bcolor = "#0d0d0d"
+            color = "#eeeeec"
+        self.setStyleSheet(f"background: {bcolor};color: {color}")
     
     def app_start(self):
         cmd = (f"flatpak run {self.app_id}").split(" ")

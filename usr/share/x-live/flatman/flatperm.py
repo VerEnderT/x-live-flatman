@@ -28,18 +28,19 @@ from PyQt5.QtCore import QSize, Qt
 # FlatPerm: PyQt5 GUI zur Anzeige und Bearbeitung von Flatpak-Berechtigungen
 #
 class FlatPerm(QWidget):
-    def __init__(self, app_id):
+    def __init__(self, app_id, faktor = 1):
         super().__init__()
-        self.init_ui(app_id)
+        self.init_ui(app_id,faktor)
 
-    def init_ui(self, app_id):
+    def init_ui(self, app_id, faktor):
         self.app_id = app_id
+        self.faktor = faktor
         self.darkmode = False
-        print(app_id)
+        #print(app_id)
         self.app_name = flatdata.get_name(app_id)
-        print(self.app_name)
+        #print(self.app_name)
         bcolor, color = themecolor.theme_color()
-        print(bcolor,color)
+        #print(bcolor,color)
 
         if bcolor == None or color == None:
             bcolor = "0d0d0d"
@@ -60,6 +61,7 @@ class FlatPerm(QWidget):
                                     border: 1px #""" +  color + """;
                                     border-radius: 3px;
                                     background-color: #20afafaf;
+                                    font-size: """+str(int(13*faktor))+"""px;
                                     color: #""" + color + """;
                                 
                                 }
@@ -67,7 +69,9 @@ class FlatPerm(QWidget):
                                     border: none;
                                     background-color: transparent;
                                     text-align: left;
+                                    font-size: """+str(int(13*faktor))+"""px;
                                     padding: 0px;
+                                    padding-left: 4px;
                                     /*color: inherit;   Optional: Textfarbe */
                                     font: inherit; /* Optional: Schrift vom Eltern-Widget übernehmen */
                                 }
@@ -127,7 +131,7 @@ class FlatPerm(QWidget):
                                     border: none;
                                     background-color: transparent;
                                     text-align: left;
-                                    font-size: 24px;
+                                    font-size: """+str(int(24*faktor))+"""px;
                                     padding: 0px;
                                     /*color: inherit;   Optional: Textfarbe */
                                     font: inherit; /* Optional: Schrift vom Eltern-Widget übernehmen */
@@ -143,7 +147,7 @@ class FlatPerm(QWidget):
                                     border: none;
                                     background-color: transparent;
                                     text-align: center;
-                                    font-size: 32px;
+                                    font-size: """+str(int(32*faktor))+"""px;
                                     padding: 0px;
                                     /*color: inherit;   Optional: Textfarbe */
                                     font: inherit; /* Optional: Schrift vom Eltern-Widget übernehmen */
@@ -159,7 +163,7 @@ class FlatPerm(QWidget):
                                     border: none;
                                     background-color: transparent;
                                     text-align: left;
-                                    font-size: 10px;
+                                    font-size: """+str(int(10*faktor))+"""px;
                                     padding: 0px;
                                     color: grey;  
                                     font: inherit; /* Optional: Schrift vom Eltern-Widget übernehmen */
@@ -212,12 +216,12 @@ class FlatPerm(QWidget):
             con_btn = QPushButton(btn)
             con_btn.setCheckable(True)
             con_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/off.png"))
-            con_btn.setIconSize(QSize(32,32))
+            con_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             con_btn.toggled.connect(self.handle_toggle)
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             temp_layout.addWidget(con_btn)
             temp_layout.addStretch()
             temp_layout.addWidget(warn_btn)
@@ -256,12 +260,12 @@ class FlatPerm(QWidget):
             con_btn = QPushButton(btn)
             con_btn.setCheckable(True)
             con_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/off.png"))
-            con_btn.setIconSize(QSize(32,32))
+            con_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             con_btn.toggled.connect(self.handle_toggle)
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             temp_layout.addWidget(con_btn)
             temp_layout.addStretch()
             temp_layout.addWidget(warn_btn)
@@ -294,12 +298,12 @@ class FlatPerm(QWidget):
             con_btn = QPushButton(btn)
             con_btn.setCheckable(True)
             con_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/off.png"))
-            con_btn.setIconSize(QSize(32,32))
+            con_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             con_btn.toggled.connect(self.handle_toggle)
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             temp_layout.addWidget(con_btn)
             temp_layout.addStretch()
             temp_layout.addWidget(warn_btn)
@@ -333,12 +337,12 @@ class FlatPerm(QWidget):
             con_btn = QPushButton(btn)
             con_btn.setCheckable(True)
             con_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/off.png"))
-            con_btn.setIconSize(QSize(32,32))
+            con_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             con_btn.toggled.connect(self.handle_toggle)
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             temp_layout.addWidget(con_btn)
             temp_layout.addStretch()
             temp_layout.addWidget(warn_btn)
@@ -375,12 +379,12 @@ class FlatPerm(QWidget):
             con_btn = QPushButton(btn)
             con_btn.setCheckable(True)
             con_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/off.png"))
-            con_btn.setIconSize(QSize(32,32))
+            con_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             con_btn.toggled.connect(self.handle_toggle)
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             temp_layout.addWidget(con_btn)
             temp_layout.addStretch()
             temp_layout.addWidget(warn_btn)
@@ -395,7 +399,7 @@ class FlatPerm(QWidget):
         con_files_add = QPushButton()
         con_files_add.setIcon(QIcon("/usr/share/x-live/flatman/icons/add_file.png"))
         con_files_add.setStyleSheet(self.btnStyle)
-        con_files_add.setIconSize(QSize(24,24))
+        con_files_add.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
         con_files_add.clicked.connect(lambda: self.add_entry(0))
         temp_layout.addWidget(con_files_add)
         content_layout.addLayout(temp_layout)
@@ -424,7 +428,7 @@ class FlatPerm(QWidget):
         con_persistent_add.setIcon(QIcon("/usr/share/x-live/flatman/icons/add_file.png"))
         con_persistent_add.setStyleSheet(self.btnStyle)
         con_persistent_add.clicked.connect(lambda: self.add_entry(1))
-        con_persistent_add.setIconSize(QSize(24,24))
+        con_persistent_add.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
         temp_layout.addWidget(con_persistent_add)
         content_layout.addLayout(temp_layout)
         self.con_persistent_layout = QVBoxLayout()
@@ -454,7 +458,7 @@ class FlatPerm(QWidget):
         environment_add = QPushButton()
         environment_add.setIcon(QIcon("/usr/share/x-live/flatman/icons/add.png"))
         environment_add.setStyleSheet(self.btnStyle)
-        environment_add.setIconSize(QSize(24,24))
+        environment_add.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
         environment_add.clicked.connect(lambda: self.add_entry(2))
         temp_layout.addWidget(environment_add)
         content_layout.addLayout(temp_layout)
@@ -483,7 +487,7 @@ class FlatPerm(QWidget):
         system_talk_add.setIcon(QIcon("/usr/share/x-live/flatman/icons/add.png"))
         system_talk_add.setStyleSheet(self.btnStyle)
         system_talk_add.clicked.connect(lambda: self.add_entry(3))
-        system_talk_add.setIconSize(QSize(24,24))
+        system_talk_add.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
         temp_layout.addWidget(system_talk_add)
         content_layout.addLayout(temp_layout)
         self.system_talk_layout = QVBoxLayout()
@@ -501,7 +505,7 @@ class FlatPerm(QWidget):
         system_own_add.setIcon(QIcon("/usr/share/x-live/flatman/icons/add.png"))
         system_own_add.setStyleSheet(self.btnStyle)
         system_own_add.clicked.connect(lambda: self.add_entry(4))
-        system_own_add.setIconSize(QSize(24,24))
+        system_own_add.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
         temp_layout.addWidget(system_own_add)
         content_layout.addLayout(temp_layout)
         self.system_own_layout = QVBoxLayout()
@@ -529,7 +533,7 @@ class FlatPerm(QWidget):
         session_talk_add.setIcon(QIcon("/usr/share/x-live/flatman/icons/add.png"))
         session_talk_add.setStyleSheet(self.btnStyle)
         session_talk_add.clicked.connect(lambda: self.add_entry(5))
-        session_talk_add.setIconSize(QSize(24,24))
+        session_talk_add.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
         temp_layout.addWidget(session_talk_add)
         content_layout.addLayout(temp_layout)
         self.session_talk_layout = QVBoxLayout()
@@ -547,7 +551,7 @@ class FlatPerm(QWidget):
         session_own_add.setIcon(QIcon("/usr/share/x-live/flatman/icons/add.png"))
         session_own_add.setStyleSheet(self.btnStyle)
         session_own_add.clicked.connect(lambda: self.add_entry(6))
-        session_own_add.setIconSize(QSize(24,24))
+        session_own_add.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
         temp_layout.addWidget(session_own_add)
         content_layout.addLayout(temp_layout)
         self.session_own_layout = QVBoxLayout()
@@ -761,12 +765,12 @@ class FlatPerm(QWidget):
                         warn_btn = QPushButton()
                         warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/nowarn.png"))
                         warn_btn.setToolTip("")
-                        warn_btn.setIconSize(QSize(32,32))
+                        warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
                         rem_btn = QPushButton()
                         rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
                         rem_btn.setStyleSheet(self.btnStyle)
                         rem_btn.setToolTip("Eintrag entfernen")
-                        rem_btn.setIconSize(QSize(24,24))
+                        rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
                         rem_btn.clicked.connect(self.remove_entry)
                         
                         temp_layout.addWidget(editline)
@@ -789,12 +793,12 @@ class FlatPerm(QWidget):
                         rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
                         rem_btn.setStyleSheet(self.btnStyle)
                         rem_btn.setToolTip("Eintrag entfernen")
-                        rem_btn.setIconSize(QSize(24,24))
+                        rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
                         rem_btn.clicked.connect(self.remove_entry)
                         warn_btn = QPushButton()
                         warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
                         warn_btn.setToolTip("durch benutzer geändert")
-                        warn_btn.setIconSize(QSize(32,32))
+                        warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
                         temp_layout.addWidget(editline)
                         temp_layout.addStretch()
                         temp_layout.addWidget(warn_btn)
@@ -816,12 +820,12 @@ class FlatPerm(QWidget):
                     warn_btn = QPushButton()
                     warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/nowarn.png"))
                     warn_btn.setToolTip("durch benutzer geändert")
-                    warn_btn.setIconSize(QSize(32,32))
+                    warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
                     rem_btn = QPushButton()
                     rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
                     rem_btn.setStyleSheet(self.btnStyle)
                     rem_btn.setToolTip("Eintrag entfernen")
-                    rem_btn.setIconSize(QSize(24,24))
+                    rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
                     rem_btn.clicked.connect(self.remove_entry)
                     temp_layout.addWidget(editline)
                     temp_layout.addStretch()
@@ -841,12 +845,12 @@ class FlatPerm(QWidget):
                     warn_btn = QPushButton()
                     warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
                     warn_btn.setToolTip("durch benutzer geändert")
-                    warn_btn.setIconSize(QSize(32,32))
+                    warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
                     rem_btn = QPushButton()
                     rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
                     rem_btn.setStyleSheet(self.btnStyle)
                     rem_btn.setToolTip("Eintrag entfernen")
-                    rem_btn.setIconSize(QSize(24,24))
+                    rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
                     rem_btn.clicked.connect(self.remove_entry)
                     temp_layout.addWidget(editline)
                     temp_layout.addStretch()
@@ -871,12 +875,12 @@ class FlatPerm(QWidget):
                         warn_btn = QPushButton()
                         warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/nowarn.png"))
                         warn_btn.setToolTip("")
-                        warn_btn.setIconSize(QSize(32,32))
+                        warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
                         rem_btn = QPushButton()
                         rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
                         rem_btn.setStyleSheet(self.btnStyle)
                         rem_btn.setToolTip("Eintrag entfernen")
-                        rem_btn.setIconSize(QSize(24,24))
+                        rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
                         rem_btn.clicked.connect(self.remove_entry)
                         temp_layout.addWidget(editline)
                         temp_layout.addStretch()
@@ -897,12 +901,12 @@ class FlatPerm(QWidget):
                         warn_btn = QPushButton()
                         warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/nowarn.png"))
                         warn_btn.setToolTip("")
-                        warn_btn.setIconSize(QSize(32,32))
+                        warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
                         rem_btn = QPushButton()
                         rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
                         rem_btn.setStyleSheet(self.btnStyle)
                         rem_btn.setToolTip("Eintrag entfernen")
-                        rem_btn.setIconSize(QSize(24,24))
+                        rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
                         rem_btn.clicked.connect(self.remove_entry)
                         temp_layout.addWidget(editline)
                         temp_layout.addStretch()
@@ -928,12 +932,12 @@ class FlatPerm(QWidget):
                         warn_btn = QPushButton()
                         warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
                         warn_btn.setToolTip("durch benutzer geändert")
-                        warn_btn.setIconSize(QSize(32,32))
+                        warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
                         rem_btn = QPushButton()
                         rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
                         rem_btn.setStyleSheet(self.btnStyle)
                         rem_btn.setToolTip("Eintrag entfernen")
-                        rem_btn.setIconSize(QSize(24,24))
+                        rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
                         rem_btn.clicked.connect(self.remove_entry)
                         temp_layout.addWidget(editline)
                         temp_layout.addStretch()
@@ -954,12 +958,12 @@ class FlatPerm(QWidget):
                         warn_btn = QPushButton()
                         warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
                         warn_btn.setToolTip("durch benutzer geändert")
-                        warn_btn.setIconSize(QSize(32,32))
+                        warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
                         rem_btn = QPushButton()
                         rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
                         rem_btn.setStyleSheet(self.btnStyle)
                         rem_btn.setToolTip("Eintrag entfernen")
-                        rem_btn.setIconSize(QSize(24,24))
+                        rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
                         rem_btn.clicked.connect(self.remove_entry)
                         temp_layout.addWidget(editline)
                         temp_layout.addStretch()
@@ -1029,12 +1033,12 @@ self.con_filesystems_rem_btn_list,self.con_persistent_rem_btn_list,self.environm
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             rem_btn = QPushButton()
             rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
             rem_btn.setStyleSheet(self.btnStyle)
             rem_btn.setToolTip("Eintrag entfernen")
-            rem_btn.setIconSize(QSize(24,24))
+            rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
             rem_btn.clicked.connect(self.remove_entry)
             temp_layout.addWidget(editline)
             temp_layout.addStretch()
@@ -1060,12 +1064,12 @@ self.con_filesystems_rem_btn_list,self.con_persistent_rem_btn_list,self.environm
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             rem_btn = QPushButton()
             rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
             rem_btn.setStyleSheet(self.btnStyle)
             rem_btn.setToolTip("Eintrag entfernen")
-            rem_btn.setIconSize(QSize(24,24))
+            rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
             rem_btn.clicked.connect(self.remove_entry)
             temp_layout.addWidget(editline)
             temp_layout.addStretch()
@@ -1091,12 +1095,12 @@ self.con_filesystems_rem_btn_list,self.con_persistent_rem_btn_list,self.environm
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             rem_btn = QPushButton()
             rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
             rem_btn.setStyleSheet(self.btnStyle)
             rem_btn.setToolTip("Eintrag entfernen")
-            rem_btn.setIconSize(QSize(24,24))
+            rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
             rem_btn.clicked.connect(self.remove_entry)
             temp_layout.addWidget(editline)
             temp_layout.addStretch()
@@ -1121,12 +1125,12 @@ self.con_filesystems_rem_btn_list,self.con_persistent_rem_btn_list,self.environm
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             rem_btn = QPushButton()
             rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
             rem_btn.setStyleSheet(self.btnStyle)
             rem_btn.setToolTip("Eintrag entfernen")
-            rem_btn.setIconSize(QSize(24,24))
+            rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
             rem_btn.clicked.connect(self.remove_entry)
             temp_layout.addWidget(editline)
             temp_layout.addStretch()
@@ -1151,12 +1155,12 @@ self.con_filesystems_rem_btn_list,self.con_persistent_rem_btn_list,self.environm
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             rem_btn = QPushButton()
             rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
             rem_btn.setStyleSheet(self.btnStyle)
             rem_btn.setToolTip("Eintrag entfernen")
-            rem_btn.setIconSize(QSize(24,24))
+            rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
             rem_btn.clicked.connect(self.remove_entry)
             temp_layout.addWidget(editline)
             temp_layout.addStretch()
@@ -1180,12 +1184,12 @@ self.con_filesystems_rem_btn_list,self.con_persistent_rem_btn_list,self.environm
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             rem_btn = QPushButton()
             rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
             rem_btn.setStyleSheet(self.btnStyle)
             rem_btn.setToolTip("Eintrag entfernen")
-            rem_btn.setIconSize(QSize(24,24))
+            rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
             rem_btn.clicked.connect(self.remove_entry)
             temp_layout.addWidget(editline)
             temp_layout.addStretch()
@@ -1209,12 +1213,12 @@ self.con_filesystems_rem_btn_list,self.con_persistent_rem_btn_list,self.environm
             warn_btn = QPushButton()
             warn_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/warn.png"))
             warn_btn.setToolTip("durch benutzer geändert")
-            warn_btn.setIconSize(QSize(32,32))
+            warn_btn.setIconSize(QSize(int(32*self.faktor),int(32*self.faktor)))
             rem_btn = QPushButton()
             rem_btn.setIcon(QIcon("/usr/share/x-live/flatman/icons/rem.png"))
             rem_btn.setStyleSheet(self.btnStyle)
             rem_btn.setToolTip("Eintrag entfernen")
-            rem_btn.setIconSize(QSize(24,24))
+            rem_btn.setIconSize(QSize(int(24*self.faktor),int(24*self.faktor)))
             rem_btn.clicked.connect(self.remove_entry)
             temp_layout.addWidget(editline)
             temp_layout.addStretch()
