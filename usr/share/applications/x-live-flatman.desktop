@@ -1,5 +1,5 @@
 [Desktop Entry]
-Version=0.1.0
+Version=0.1.1
 Type=Application
 Name=X-Live FlatMan
 Name[de]=X-Live FlatMan
@@ -11,5 +11,5 @@ Categories=Utility;System;
 Keywords=flatpak;flathub;container;sandbox;software;
 StartupNotify=true
 X-GNOME-UsesNotifications=true
-GenericName=Flatpak Manager
-GenericName[de]=Flatpak-Verwalter
+GenericName=Software Manager
+GenericName[de]=Anwendungsverwaltung

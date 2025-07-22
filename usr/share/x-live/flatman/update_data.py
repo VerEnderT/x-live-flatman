@@ -194,6 +194,7 @@ names = {
 #program_data = {}
 zaehler = 0
 zaehler_icon = 0
+new_icons_list = []
 app_ids, app_names, app_versions, app_sizes, app_desc_shorts = get_all_apps()
 count_cmd = f"echo Daten zu 0% aktuallisiert 0 Apps erfasst !!"
 os.system(count_cmd)
@@ -228,6 +229,8 @@ for x,app in enumerate(app_ids):
             #os.system(cmd_name)
     elif not os.path.exists(icon_path):
         zaehler_icon = zaehler_icon + 1
+        icon_cmd = f"echo {app_id}  {app_name} >> {config_dir}/log.txt"
+        os.system(icon_cmd)
         only_icon(app_id)
 
     count_cmd = f"echo {pro}% aktuallisiert {x+1}/{len(app_ids)+1} Apps erfasst !! {zaehler} Apps + {zaehler_icon} Icons hinzugefügt "

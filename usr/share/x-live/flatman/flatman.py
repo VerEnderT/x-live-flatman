@@ -10,7 +10,7 @@ import about
 import x_app_updates
 import re
 from bs4 import BeautifulSoup
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox, QLineEdit, QAction, QMenu, QMenuBar
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem, QLabel, QTextEdit, QScrollArea, QMessageBox, QComboBox, QLineEdit, QAction, QMenu, QMenuBar, QListView
 from PyQt5.QtGui import QPixmap, QIcon, QPixmap
 from PyQt5.QtCore import Qt, QProcess, QSize
 import tempfile
@@ -36,8 +36,8 @@ class FlatpakApp(QMainWindow):
         #print(self.bcolor, self.color)
 
         if self.bcolor == None or self.color == None:
-            self.bcolor = "0d0d0d"
-            self.color = "eeeeec"
+            self.bcolor = "eeeeec"
+            self.color = "0d0d0d"
         else:
             self.bcolor = self.bcolor.replace("#","")
             self.color = self.color.replace("#","")
@@ -58,9 +58,10 @@ class FlatpakApp(QMainWindow):
 
     def initUI(self):
         self.faktor = app.desktop().height()/1000
-        #self.faktor = 1.7
+        self.faktor = 1.0
         self.setWindowTitle("X-Live FlatMan")
         self.setGeometry(200, 20, int(950*(self.faktor+0.3)), int(600*self.faktor))
+        self.setMinimumSize(int(750*(self.faktor+0.3)), int(600*self.faktor))
         self.setWindowIcon(QIcon("/usr/share/pixmaps/x-live-flatman.png"))
         lwidth = int(232*self.faktor)
         self.lwidth = lwidth
@@ -69,7 +70,7 @@ class FlatpakApp(QMainWindow):
         sshotheight = int(320*self.faktor)
         statuswidth= int(620*self.faktor)
         statusheight= int(25*self.faktor)
-        buttonheight= int(24*self.faktor)
+        buttonheight= int(35*self.faktor)
         
         self.last_item = None
         self.process = None
@@ -115,7 +116,7 @@ class FlatpakApp(QMainWindow):
             #print(update_check)
         
         except Exception as e:
-            print(f"Fehler: {e}")
+            print(f"Fehler bei updatecheck: {str(e)}")
             update_check  = {}
             update_check["update"] = "x"
 
@@ -152,7 +153,12 @@ class FlatpakApp(QMainWindow):
 
         self.categoryList = QComboBox()
         self.categoryList.setFixedSize(lwidth,buttonheight)
-        self.categoryList.setStyleSheet(f"font-size: {str(int(14*self.faktor))}px;")
+        
+
+        self.categoryList.setStyleSheet("QComboBox {font-size: " + str(int(14*self.faktor)) + "px;} QComboBox QAbstractItemView {selection-background-color: #" + self.color + ";selection-color: #" + self.bcolor + ";} ")
+
+
+
         self.categoryList.setFocusPolicy(Qt.NoFocus)
         self.categoryList.currentIndexChanged.connect(self.loadPrograms)
         self.leftLayout.addWidget(self.categoryList)
@@ -345,15 +351,15 @@ class FlatpakApp(QMainWindow):
             # HTML-Text definieren
             html = f"""
             <div>
-                <span style="font-size:"""+str(int(14*self.faktor))+f"""pt; font-weight:bold;">{app_name}</span><br>
-                <span style="font-size:"""+str(int(10*self.faktor))+f"""pt; color:gray;">{beschreibung}</span>
+                <span style="font-size:"""+str(int(12*self.faktor))+f"""pt; font-weight:bold;">{app_name}</span><br>
+                <span style="font-size:"""+str(int(9*self.faktor))+f"""pt;">{beschreibung}</span>
             </div>
             """
 
 
             widget = QWidget()
             layout = QHBoxLayout()
-            layout.setContentsMargins(1, 1, 1, 1)
+            layout.setContentsMargins(5, 5, 5, 5)
             layout.setSpacing(0)
             icon_path=f"{self.icons_dir}{app_id}.png"
             # Icon-Label
@@ -366,7 +372,7 @@ class FlatpakApp(QMainWindow):
             icon_label.setPixmap(pixmap)
             #icon_label.setIcon(QIcon(icon_path))   
             #icon_label.setIconSize(QSize(int(32*self.faktor), int(32*self.faktor)))      
-            icon_label.setFixedSize(int(42*self.faktor),int(84*self.faktor))
+            icon_label.setFixedWidth(int(42*self.faktor))
 
             # Text-Label
             text_label = QLabel()
@@ -475,14 +481,16 @@ class FlatpakApp(QMainWindow):
                 print("Fehler beim Klicken:", e)
 
     def highlightSelectedItem(self, current_item):
+        self.programList.setStyleSheet("QListWidget::item:selected {border-radius: " + str(int(5*self.faktor)) + "px; background-color: #65" + self.color + ";color: #" + self.color + ";}") 
+        print(self.color)
         for index in range(self.programList.count()):
             item = self.programList.item(index)
             widget = self.programList.itemWidget(item)
             if widget:
                 if item == current_item:
-                    widget.setStyleSheet("QLabel{background: #30"+self.color+"; border-radius: 0px; padding: 2px;} QLabel:hover {background: #50"+self.color+";}")
+                    widget.setStyleSheet("QWidget:hover {padding: 0px;} QWidget {background: transparent;padding: 0px;} QLabel:hover {background: transparent; } QLabel {background: transparent; }")
                 else:
-                    widget.setStyleSheet("QWidget {border: none; padding: 2px;} QWidget:hover {background: #10aaaaaa;} ")
+                    widget.setStyleSheet("QWidget {padding: 0px;} QWidget:hover {background: #45" + self.color + "; border-radius: " + str(int(5*self.faktor)) + "px; padding: 0px;} QLabel:hover {background: transparent; } QLabel {background: transparent; }")
 
     def get_flatpak_info(self, app_name):
         description = self.program_data.get(app_name, {}).get("description")
