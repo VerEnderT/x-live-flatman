@@ -81,7 +81,7 @@ class MyWidget(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)  # Entfernt die Fensterdekoration
         self.adjustSize()
-        self.show()
+        self.hide()
         self.start_data_refresh()
 
 
@@ -90,7 +90,7 @@ class MyWidget(QWidget):
 
     def start_data_refresh(self):
         if not self.process:
-            self.label.setText("bitte warten\nDaten werden aktuallisiert ...")
+            #self.label.setText("bitte warten\nDaten werden aktuallisiert ...")
             self.process = QProcess(self)
             self.process.setProcessChannelMode(QProcess.MergedChannels)
             self.process.readyRead.connect(self.read_output)
