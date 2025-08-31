@@ -55,6 +55,11 @@ class FlatpakApp(QMainWindow):
 
 
         self.categories_ordered = ["Favoriten","Game", "Office", "Graphics", "AudioVideo", "Utility", "Network", "Education", "Science", "Development", "System","Other","Alle" ]
+        self.categories_trans = {"Favoriten":"Favoriten","Spiele":"Game", "Büro":"Office", "Grafik":"Graphics", "AudioVideo":"AudioVideo", "Dienstprogramme":"Utility", "Internet":"Network", "Bildung":"Education", "Wissenschaft":"Science", "Entwicklung":"Development", "System":"System","Sonstiges":"Other","Alle":"Alle" }
+        self.categories_de = ["Favoriten","Spiele", "Büro", "Grafik", "AudioVideo", "Dienstprogramme", "Internet", "Bildung", "Wissenschaft", "Entwicklung", "System","Sonstiges","Alle"]
+
+
+        self.categories_ordered
         QTimer.singleShot(3,self.initUI)
 
     def wait_for_main(self):
@@ -121,11 +126,13 @@ class FlatpakApp(QMainWindow):
             """
         # Menübar erstellen
         menubar = QMenuBar()
-        menubar.setStyleSheet(f"font-size: {str(int(14*self.faktor))}px;")
-        menubar.setFixedSize(buttonheight,buttonheight)
+        #menubar.setStyleSheet(f"font-size: {str(int(22*self.faktor))}px")
+        menubar.setMaximumWidth(int(30*self.faktor))
         # Menü hinzufügen
-        menu_menu = menubar.addMenu("")
-        menu_menu.setIcon(QIcon("/usr/share/x-live/flatman/icons/menu.png"))
+        menu_menu = menubar.addMenu("⋮")
+        menu_menu.setStyleSheet(f"font-size: {str(int(14*self.faktor))}px;background: #20{self.color};")
+        #menu_menu.setIcon(QIcon("/usr/share/x-live/flatman/icons/menu.png"))
+        #menu_menu.setStyleSheet(f"background: #80{self.bcolor};color: #80{self.color};")
         # Aktionen für das Menü - Berechtigungen
         permissions_action = QAction("Berechtigungen", self)
         permissions_action.setIcon(QIcon("/usr/share/x-live/flatman/icons/perm_icon.png"))
@@ -397,7 +404,7 @@ class FlatpakApp(QMainWindow):
         self.wait_win.close()
         self.show()
         self.categoryList.clear()
-        for category in self.categories_ordered:
+        for category in self.categories_de:
             self.categoryList.addItem(category)
 
         self.categoryList.setCurrentIndex(0)
@@ -460,7 +467,7 @@ class FlatpakApp(QMainWindow):
 
 
     def loadPrograms(self):
-        category = self.categoryList.currentText()
+        category = self.categories_trans[self.categoryList.currentText()]
         self.search_input.clear()
         self.updatescroll.setVisible(False)
 
@@ -608,6 +615,7 @@ class FlatpakApp(QMainWindow):
             #icon_label.setIcon(QIcon(icon_path))   
             #icon_label.setIconSize(QSize(int(32*self.faktor), int(32*self.faktor)))      
             icon_label.setFixedWidth(int(42*self.faktor))
+            #icon_label.setStyleSheet("background: transparent;")
 
             # Text-Label
             text_label = QLabel()
@@ -615,6 +623,7 @@ class FlatpakApp(QMainWindow):
             text_label.setTextFormat(Qt.RichText)
             text_label.setWordWrap(True)
             text_label.setToolTip(tooltip)
+            #text_label.setStyleSheet("background: transparent;")
 
             layout.addWidget(icon_label)
             layout.addWidget(text_label)
@@ -623,7 +632,7 @@ class FlatpakApp(QMainWindow):
 
             item = QListWidgetItem()
             
-            widget.setStyleSheet("QWidget {padding: 0px;} QWidget:hover {background: #45" + self.color + "; border-radius: " + str(int(5*self.faktor)) + "px; padding: 0px;} QLabel:hover {background: transparent; } QLabel {background: transparent; }")
+            widget.setStyleSheet("QWidget {padding: 0px;background: transparent;} QWidget:hover {background: #45" + self.color + "; border-radius: " + str(int(5*self.faktor)) + "px; padding: 0px;} QLabel:hover {background: transparent; } QLabel {background: transparent; }")
 
             self.programList.addItem(item)
             self.programList.setItemWidget(item, widget)
@@ -1179,15 +1188,6 @@ class FlatpakApp(QMainWindow):
         
         self.check_installed()
         self.update_finished()
-
-
-
-
-
-
-
-
-
 
         
 if __name__ == '__main__':

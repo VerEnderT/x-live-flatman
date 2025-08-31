@@ -11,7 +11,7 @@ from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
 
 class FlatpakInfoFetcher(QWidget):
-    def __init__(self, config_dir=None, icons_path=None, timeout_ms=10000, show_progress=False):
+    def __init__(self, config_dir=None, icons_path=None, timeout_ms=100000, show_progress=False):
         super().__init__()
 
         bcolor,color  = themecolor.theme_color()
@@ -204,12 +204,26 @@ class FlatpakInfoFetcher(QWidget):
         total = len(app_ids)
 
         for i, app_id in enumerate(app_ids):
+            icon_path = os.path.join(self.icons_path, f"{app_id}.png")
             if self.show_progress:
                 self.progress.setValue(int((i + 1) / total * 100))
                 self.label.setText(f"{i+1}/{total} – {app_names[i]}")
                 QApplication.processEvents()
 
             if app_names[i] not in program_data:
+                thumb, desc, cats = self.get_flatpak_info(app_id)
+                category = self.check_category(cats)
+                program_data[app_names[i]] = {
+                    "category": category,
+                    "id": app_id,
+                    "description": desc,
+                    "thumbnail": thumb,
+                    "version": app_versions[i],
+                    "size": app_sizes[i],
+                    "short-desc": self.translate_text(app_desc_shorts[i])
+                }
+
+            elif not os.path.exists(icon_path):
                 thumb, desc, cats = self.get_flatpak_info(app_id)
                 category = self.check_category(cats)
                 program_data[app_names[i]] = {
